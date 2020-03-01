@@ -51,18 +51,6 @@ func (c *ClientConn) preHandleShard(sql string) (bool, error) {
 	if len(sql) == 0 {
 		return false, errors.ErrCmdUnsupport
 	}
-	//filter the blacklist sql
-	if c.proxy.blacklistSqls[c.proxy.blacklistSqlsIndex].sqlsLen != 0 {
-		if c.isBlacklistSql(sql) {
-			golog.OutputSql("Forbidden", "%s->%s:%s",
-				c.c.RemoteAddr(),
-				c.proxy.addr,
-				sql,
-			)
-			err := mysql.NewError(mysql.ER_UNKNOWN_ERROR, "sql in blacklist.")
-			return false, err
-		}
-	}
 
 	tokens := strings.FieldsFunc(sql, hack.IsSqlSep)
 
@@ -161,7 +149,10 @@ func (c *ClientConn) GetTransExecDB(tokens []string, sql string) (*ExecuteDB, er
 
 //if sql need shard return nil, else return the unshard db
 func (c *ClientConn) GetExecDB(tokens []string, sql string) (*ExecuteDB, error) {
+
+
 	tokensLen := len(tokens)
+	return c.getSelectExecDB(sql,tokens,tokensLen)
 	if 0 < tokensLen {
 		tokenId, ok := mysql.PARSE_TOKEN_MAP[strings.ToLower(tokens[0])]
 		if ok == true {
@@ -222,48 +213,10 @@ func (c *ClientConn) setExecuteNode(tokens []string, tokensLen int, executeDB *E
 
 //get the execute database for select sql
 func (c *ClientConn) getSelectExecDB(sql string, tokens []string, tokensLen int) (*ExecuteDB, error) {
-	var ruleDB string
 	executeDB := new(ExecuteDB)
 	executeDB.sql = sql
 	executeDB.IsSlave = true
 
-	schema := c.schema
-	router := schema.rule
-	rules := router.Rules
-
-	if len(rules) != 0 {
-		for i := 1; i < tokensLen; i++ {
-			if strings.ToLower(tokens[i]) == mysql.TK_STR_FROM {
-				if i+1 < tokensLen {
-					DBName, tableName := sqlparser.GetDBTable(tokens[i+1])
-					//if the token[i+1] like this:kingshard.test_shard_hash
-					if DBName != "" {
-						ruleDB = DBName
-					} else {
-						ruleDB = c.db
-					}
-					if router.GetRule(ruleDB, tableName) != router.DefaultRule {
-						return nil, nil
-					} else {
-						//if the table is not shard table,send the sql
-						//to default db
-						break
-					}
-				}
-			}
-
-			if strings.ToLower(tokens[i]) == mysql.TK_STR_LAST_INSERT_ID {
-				return nil, nil
-			}
-		}
-	}
-
-	//if send to master
-	if 2 < tokensLen {
-		if strings.ToLower(tokens[1]) == mysql.TK_STR_MASTER_HINT {
-			executeDB.IsSlave = false
-		}
-	}
 	err := c.setExecuteNode(tokens, tokensLen, executeDB)
 	if err != nil {
 		return nil, err

@@ -16,6 +16,7 @@ package server
 
 import (
 	"fmt"
+	"github.com/flike/kingshard/core/parser"
 	"runtime"
 	"strings"
 	"sync"
@@ -27,11 +28,12 @@ import (
 	"github.com/flike/kingshard/core/hack"
 	"github.com/flike/kingshard/mysql"
 	"github.com/flike/kingshard/proxy/router"
-	"github.com/flike/kingshard/sqlparser"
+	//"github.com/flike/kingshard/sqlparser"
+	"github.com/xwb1989/sqlparser"
 )
 
-/*处理query语句*/
 func (c *ClientConn) handleQuery(sql string) (err error) {
+
 	defer func() {
 		if e := recover(); e != nil {
 			golog.OutputSql("Error", "err:%v,sql:%s", e, sql)
@@ -51,67 +53,159 @@ func (c *ClientConn) handleQuery(sql string) (err error) {
 		}
 	}()
 
-	sql = strings.TrimRight(sql, ";") //删除sql语句最后的分号
-	hasHandled, err := c.preHandleShard(sql)
-	if err != nil {
-		golog.Error("server", "preHandleShard", err.Error(), 0,
-			"sql", sql,
-			"hasHandled", hasHandled,
-		)
-		return err
-	}
-	if hasHandled {
-		return nil
-	}
+	var (
+		rs        []*mysql.Result
+		executeDB *ExecuteDB
+	)
 
-	var stmt sqlparser.Statement
-	stmt, err = sqlparser.Parse(sql) //解析sql语句,得到的stmt是一个interface
+	err = parser.Parse(sql)
 	if err != nil {
-		golog.Error("server", "parse", err.Error(), 0, "hasHandled", hasHandled, "sql", sql)
+		hack.Red("Parse error : %v ", err)
 		return err
 	}
 
-	switch v := stmt.(type) {
-	case *sqlparser.Select:
-		return c.handleSelect(v, nil)
-	case *sqlparser.Insert:
-		return c.handleExec(stmt, nil)
-	case *sqlparser.Update:
-		return c.handleExec(stmt, nil)
-	case *sqlparser.Delete:
-		return c.handleExec(stmt, nil)
-	case *sqlparser.Replace:
-		return c.handleExec(stmt, nil)
-	case *sqlparser.Set:
-		return c.handleSet(v, sql)
-	case *sqlparser.Begin:
-		return c.handleBegin()
-	case *sqlparser.Commit:
-		return c.handleCommit()
-	case *sqlparser.Rollback:
-		return c.handleRollback()
-	case *sqlparser.Admin:
-		if c.user == "root" {
-			return c.handleAdmin(v)
+	tokens := strings.FieldsFunc(sql, hack.IsSqlSep)
+	if len(tokens) == 0 {
+		return errors.ErrCmdUnsupport
+	}
+
+	// Key-2
+	if c.isInTransaction() {
+		executeDB, err = c.GetTransExecDB(tokens, sql)
+	} else {
+		executeDB, err = c.GetExecDB(tokens, sql)
+	}
+
+	if err != nil {
+		//this SQL doesn't need execute in the backend.
+		if err == errors.ErrIgnoreSQL {
+			err = c.writeOK(nil)
+			if err != nil {
+				return err
+			}
+			return nil
 		}
-		return fmt.Errorf("statement %T not support now", stmt)
-	case *sqlparser.AdminHelp:
-		if c.user == "root" {
-			return c.handleAdminHelp(v)
-		}
-		return fmt.Errorf("statement %T not support now", stmt)
-	case *sqlparser.UseDB:
-		return c.handleUseDB(v.DB)
-	case *sqlparser.SimpleSelect:
-		return c.handleSimpleSelect(v)
-	case *sqlparser.Truncate:
-		return c.handleExec(stmt, nil)
-	default:
-		return fmt.Errorf("statement %T not support now", stmt)
+		return err
+	}
+
+	if executeDB == nil {
+		return errors.ErrNoDatabase
+	}
+
+	//get connection in DB
+	conn, err := c.getBackendConn(executeDB.ExecNode, executeDB.IsSlave)
+	defer c.closeConn(conn, false)
+	if err != nil {
+		return err
+	}
+
+	//execute.sql may be rewritten in getShowExecDB
+	rs, err = c.executeInNode(conn, executeDB.sql, nil)
+	if err != nil {
+		return err
+	}
+
+	if len(rs) == 0 {
+		msg := fmt.Sprintf("result is empty")
+		golog.Error("ClientConn", "handleUnsupport", msg, 0, "sql", sql)
+		return mysql.NewError(mysql.ER_UNKNOWN_ERROR, msg)
+	}
+
+	if rs[0].Resultset != nil {
+		err = c.writeResultset(c.status, rs[0].Resultset)
+	} else {
+		err = c.writeOK(rs[0])
+	}
+
+	if err != nil {
+		return err
 	}
 
 	return nil
 }
+
+/*处理query语句*/
+//func (c *ClientConn) _handleQuery(sql string) (err error) {
+//	defer func() {
+//		if e := recover(); e != nil {
+//			golog.OutputSql("Error", "err:%v,sql:%s", e, sql)
+//
+//			if err, ok := e.(error); ok {
+//				const size = 4096
+//				buf := make([]byte, size)
+//				buf = buf[:runtime.Stack(buf, false)]
+//
+//				golog.Error("ClientConn", "handleQuery",
+//					err.Error(), 0,
+//					"stack", string(buf), "sql", sql)
+//			}
+//
+//			err = errors.ErrInternalServer
+//			return
+//		}
+//	}()
+//
+//	sql = strings.TrimRight(sql, ";") //删除sql语句最后的分号
+//	hasHandled, err := c.preHandleShard(sql)
+//	if err != nil {
+//		golog.Error("server", "preHandleShard", err.Error(), 0,
+//			"sql", sql,
+//			"hasHandled", hasHandled,
+//		)
+//		return err
+//	}
+//	if hasHandled {
+//		return nil
+//	}
+//
+//	var stmt sqlparser.Statement
+//	stmt, err = sqlparser.Parse(sql) //解析sql语句,得到的stmt是一个interface
+//	if err != nil {
+//		golog.Error("server", "parse", err.Error(), 0, "hasHandled", hasHandled, "sql", sql)
+//		return err
+//	}
+//
+//	switch v := stmt.(type) {
+//	case *sqlparser.Select:
+//		return c.handleSelect(v, nil)
+//	case *sqlparser.Insert:
+//		return c.handleExec(stmt, nil)
+//	case *sqlparser.Update:
+//		return c.handleExec(stmt, nil)
+//	case *sqlparser.Delete:
+//		return c.handleExec(stmt, nil)
+//	case *sqlparser.Replace:
+//		return c.handleExec(stmt, nil)
+//	case *sqlparser.Set:
+//		return c.handleSet(v, sql)
+//	case *sqlparser.Begin:
+//		return c.handleBegin()
+//	case *sqlparser.Commit:
+//		return c.handleCommit()
+//	case *sqlparser.Rollback:
+//		return c.handleRollback()
+//	case *sqlparser.Admin:
+//		if c.user == "root" {
+//			return c.handleAdmin(v)
+//		}
+//		return fmt.Errorf("statement %T not support now", stmt)
+//	case *sqlparser.AdminHelp:
+//		if c.user == "root" {
+//			return c.handleAdminHelp(v)
+//		}
+//		return fmt.Errorf("statement %T not support now", stmt)
+//	case *sqlparser.UseDB:
+//		return c.handleUseDB(v.DB)
+//	case *sqlparser.SimpleSelect:
+//		return c.handleSimpleSelect(v)
+//	case *sqlparser.Truncate:
+//		return c.handleExec(stmt, nil)
+//	default:
+//		return fmt.Errorf("statement %T not support now", stmt)
+//	}
+//
+//	return nil
+//}
 
 func (c *ClientConn) getBackendConn(n *backend.Node, fromSlave bool) (co *backend.BackendConn, err error) {
 	if !c.isInTransaction() {

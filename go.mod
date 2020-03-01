@@ -10,6 +10,6 @@ require (
 	github.com/modern-go/reflect2 v1.0.1 // indirect
 	github.com/prometheus/client_golang v1.2.1
 	github.com/valyala/fasttemplate v1.1.0 // indirect
-	golang.org/x/tools v0.0.0-20191115202509-3a792d9c32b2 // indirect
+	github.com/xwb1989/sqlparser v0.0.0-20180606152119-120387863bf2
 	gopkg.in/yaml.v2 v2.2.5
 )

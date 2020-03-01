@@ -237,16 +237,16 @@ func (c *ClientConn) readHandshakeResponse() error {
 	}
 
 	//check password
-	checkAuth := mysql.CalcPassword(c.salt, []byte(c.proxy.users[c.user]))
-	if !bytes.Equal(auth, checkAuth) {
-		golog.Error("ClientConn", "readHandshakeResponse", "error", 0,
-			"auth", auth,
-			"checkAuth", checkAuth,
-			"client_user", c.user,
-			"config_set_user", c.user,
-			"passworld", c.proxy.users[c.user])
-		return mysql.NewDefaultError(mysql.ER_ACCESS_DENIED_ERROR, c.user, c.c.RemoteAddr().String(), "Yes")
-	}
+	//checkAuth := mysql.CalcPassword(c.salt, []byte(c.proxy.users[c.user]))
+	//if !bytes.Equal(auth, checkAuth) {
+	//	golog.Error("ClientConn", "readHandshakeResponse", "error", 0,
+	//		"auth", auth,
+	//		"checkAuth", checkAuth,
+	//		"client_user", c.user,
+	//		"config_set_user", c.user,
+	//		"passworld", c.proxy.users[c.user])
+	//	return mysql.NewDefaultError(mysql.ER_ACCESS_DENIED_ERROR, c.user, c.c.RemoteAddr().String(), "Yes")
+	//}
 
 	pos += authLen
 
@@ -327,6 +327,7 @@ func (c *ClientConn) dispatch(data []byte) error {
 	cmd := data[0]
 	data = data[1:]
 
+	hack.Blue("CMD = %v",cmd)
 	switch cmd {
 	case mysql.COM_QUIT:
 		c.handleRollback()
