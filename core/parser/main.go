@@ -8,7 +8,7 @@ import (
 )
 
 var (
-	_actions   = []string{"truncate","select"}
+	_actions   = []string{"truncate"}
 	_tables    = []string{"secret"}
 	_databases = []string{"secret"}
 )

@@ -327,7 +327,8 @@ func (c *ClientConn) dispatch(data []byte) error {
 	cmd := data[0]
 	data = data[1:]
 
-	hack.Blue("CMD = %v",cmd)
+	hack.Blue("New: \n command = %d \n sql = %s",cmd,string(data))
+
 	switch cmd {
 	case mysql.COM_QUIT:
 		c.handleRollback()
