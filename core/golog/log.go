@@ -16,6 +16,7 @@ package golog
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"os"
 	"runtime"
@@ -257,6 +258,54 @@ func escape(s string, filterEqual bool) string {
 	}
 
 	return string(dest)
+}
+
+type Log struct {
+	Operator    string  `json:"operator"`
+	OperateTime int64   `json:"operateTime"`
+	Duration    float64 `json:"duration"`
+	State       string  `json:"state"`
+	Action      string  `json:"action"`
+	Table       string  `json:"table"`
+	Database    string  `json:"database"`
+	Sql         string  `json:"sql"`
+	SourceIp    string  `json:"sourceIp"`
+	TargetIp    string  `json:"targetIp"`
+}
+
+func Logging(log Log) {
+
+	bytes, err := json.Marshal(log)
+	if err != nil {
+		panic("damn we cant marshal it! reasons -> " + err.Error())
+	}
+
+	l := GlobalSqlLogger
+	buf := l.popBuf()
+	buf = append(buf, bytes...)
+	buf = append(buf, '\n')
+	l.msg <- buf
+
+	//
+	//if l.flag&Ltime > 0 {
+	//	now := time.Now().Format(TimeFormat)
+	//	buf = append(buf, now...)
+	//	buf = append(buf, " - "...)
+	//}
+	//
+	//if l.flag&Llevel > 0 {
+	//	buf = append(buf, state...)
+	//	buf = append(buf, " - "...)
+	//}
+	//
+	//s := fmt.Sprintf(format, v...)
+	//
+	//buf = append(buf, s...)
+	//
+	//if s[len(s)-1] != '\n' {
+	//	buf = append(buf, '\n')
+	//}
+
 }
 
 func OutputSql(state string, format string, v ...interface{}) {
