@@ -28,8 +28,7 @@ import (
 	"github.com/flike/kingshard/core/hack"
 	"github.com/flike/kingshard/mysql"
 	"github.com/flike/kingshard/proxy/router"
-	//"github.com/flike/kingshard/sqlparser"
-	"github.com/xwb1989/sqlparser"
+	pp "github.com/flike/kingshard/sqlparser"
 )
 
 func (c *ClientConn) handleQuery(sql string) (err error) {
@@ -422,16 +421,16 @@ func (c *ClientConn) closeShardConns(conns map[string]*backend.BackendConn, roll
 	}
 }
 
-func (c *ClientConn) newEmptyResultset(stmt *sqlparser.Select) *mysql.Resultset {
+func (c *ClientConn) newEmptyResultset(stmt *pp.Select) *mysql.Resultset {
 	r := new(mysql.Resultset)
 	r.Fields = make([]*mysql.Field, len(stmt.SelectExprs))
 
 	for i, expr := range stmt.SelectExprs {
 		r.Fields[i] = &mysql.Field{}
 		switch e := expr.(type) {
-		case *sqlparser.StarExpr:
+		case *pp.StarExpr:
 			r.Fields[i].Name = []byte("*")
-		case *sqlparser.NonStarExpr:
+		case *pp.NonStarExpr:
 			if e.As != nil {
 				r.Fields[i].Name = e.As
 				r.Fields[i].OrgName = hack.Slice(nstring(e.Expr))
@@ -449,7 +448,7 @@ func (c *ClientConn) newEmptyResultset(stmt *sqlparser.Select) *mysql.Resultset 
 	return r
 }
 
-func (c *ClientConn) handleExec(stmt sqlparser.Statement, args []interface{}) error {
+func (c *ClientConn) handleExec(stmt pp.Statement, args []interface{}) error {
 	plan, err := c.schema.rule.BuildPlan(c.db, stmt)
 	if err != nil {
 		return err
@@ -471,7 +470,7 @@ func (c *ClientConn) handleExec(stmt sqlparser.Statement, args []interface{}) er
 		err = c.mergeExecResult(rs)
 	}
 
-	return err
+	return nil
 }
 
 func (c *ClientConn) mergeExecResult(rs []*mysql.Result) error {

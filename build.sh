@@ -20,4 +20,4 @@ function updateYacc() {
     cd ${SQL_Y_PATH}
     goyacc -o ./sql.go ./sql.y
     cd -
-}}
+}
