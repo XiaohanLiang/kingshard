@@ -18,7 +18,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/flike/kingshard/config"
 	"github.com/flike/kingshard/core/errors"
 	"github.com/flike/kingshard/core/golog"
 	"github.com/flike/kingshard/sqlparser"
@@ -103,47 +102,47 @@ func (r *Rule) checkUpdateExprs(exprs sqlparser.UpdateExprs) error {
 }
 
 //NewRouter build router according to the config file
-func NewRouter(schemaConfig *config.SchemaConfig) (*Router, error) {
-	if !includeNode(schemaConfig.Nodes, schemaConfig.Default) {
-		return nil, fmt.Errorf("default node[%s] not in the nodes list",
-			schemaConfig.Default)
-	}
-
-	rt := new(Router)
-	rt.Nodes = schemaConfig.Nodes //对应schema中的nodes
-	rt.Rules = make(map[string]map[string]*Rule)
-	rt.DefaultRule = NewDefaultRule(schemaConfig.Default)
-
-	for _, shard := range schemaConfig.ShardRule {
-		for _, node := range shard.Nodes {
-			if !includeNode(rt.Nodes, node) {
-				return nil, fmt.Errorf("shard table[%s] node[%s] not in the schema.nodes list:[%s]",
-					shard.Table, node, strings.Join(shard.Nodes, ","))
-			}
-		}
-		rule, err := parseRule(&shard)
-		if err != nil {
-			return nil, err
-		}
-
-		if rule.Type == DefaultRuleType {
-			return nil, fmt.Errorf("[default-rule] duplicate, must only one")
-		}
-		//if the database exist in rules
-		if _, ok := rt.Rules[rule.DB]; ok {
-			if _, ok := rt.Rules[rule.DB][rule.Table]; ok {
-				return nil, fmt.Errorf("table %s rule in %s duplicate", rule.Table, rule.DB)
-			} else {
-				rt.Rules[rule.DB][rule.Table] = rule
-			}
-		} else {
-			m := make(map[string]*Rule)
-			rt.Rules[rule.DB] = m
-			rt.Rules[rule.DB][rule.Table] = rule
-		}
-	}
-	return rt, nil
-}
+//func NewRouter(schemaConfig *config.SchemaConfig) (*Router, error) {
+//	if !includeNode(schemaConfig.Nodes, schemaConfig.Default) {
+//		return nil, fmt.Errorf("default node[%s] not in the nodes list",
+//			schemaConfig.Default)
+//	}
+//
+//	rt := new(Router)
+//	rt.Nodes = schemaConfig.Nodes //对应schema中的nodes
+//	rt.Rules = make(map[string]map[string]*Rule)
+//	rt.DefaultRule = NewDefaultRule(schemaConfig.Default)
+//
+//	for _, shard := range schemaConfig.ShardRule {
+//		for _, node := range shard.Nodes {
+//			if !includeNode(rt.Nodes, node) {
+//				return nil, fmt.Errorf("shard table[%s] node[%s] not in the schema.nodes list:[%s]",
+//					shard.Table, node, strings.Join(shard.Nodes, ","))
+//			}
+//		}
+//		rule, err := parseRule(&shard)
+//		if err != nil {
+//			return nil, err
+//		}
+//
+//		if rule.Type == DefaultRuleType {
+//			return nil, fmt.Errorf("[default-rule] duplicate, must only one")
+//		}
+//		//if the database exist in rules
+//		if _, ok := rt.Rules[rule.DB]; ok {
+//			if _, ok := rt.Rules[rule.DB][rule.Table]; ok {
+//				return nil, fmt.Errorf("table %s rule in %s duplicate", rule.Table, rule.DB)
+//			} else {
+//				rt.Rules[rule.DB][rule.Table] = rule
+//			}
+//		} else {
+//			m := make(map[string]*Rule)
+//			rt.Rules[rule.DB] = m
+//			rt.Rules[rule.DB][rule.Table] = rule
+//		}
+//	}
+//	return rt, nil
+//}
 
 func (r *Router) GetRule(db, table string) *Rule {
 	arry := strings.Split(table, ".")
@@ -161,118 +160,118 @@ func (r *Router) GetRule(db, table string) *Rule {
 	}
 }
 
-func parseRule(cfg *config.ShardConfig) (*Rule, error) {
-	r := new(Rule)
-	r.DB = cfg.DB
-	r.Table = cfg.Table
-	r.Key = strings.ToLower(cfg.Key) //ignore case
-	r.Type = cfg.Type
-	r.Nodes = cfg.Nodes //将ruleconfig中的nodes赋值给rule
-	r.TableToNode = make(map[int]int, 0)
+//func parseRule(cfg *config.ShardConfig) (*Rule, error) {
+//	r := new(Rule)
+//	r.DB = cfg.DB
+//	r.Table = cfg.Table
+//	r.Key = strings.ToLower(cfg.Key) //ignore case
+//	r.Type = cfg.Type
+//	r.Nodes = cfg.Nodes //将ruleconfig中的nodes赋值给rule
+//	r.TableToNode = make(map[int]int, 0)
+//
+//	switch r.Type {
+//	case HashRuleType, RangeRuleType:
+//		var sumTables int
+//		if len(cfg.Locations) != len(r.Nodes) {
+//			return nil, errors.ErrLocationsCount
+//		}
+//		for i := 0; i < len(cfg.Locations); i++ {
+//			for j := 0; j < cfg.Locations[i]; j++ {
+//				r.SubTableIndexs = append(r.SubTableIndexs, j+sumTables)
+//				r.TableToNode[j+sumTables] = i
+//			}
+//			sumTables += cfg.Locations[i]
+//		}
+//	case DateDayRuleType:
+//		if len(cfg.DateRange) != len(r.Nodes) {
+//			return nil, errors.ErrDateRangeCount
+//		}
+//		for i := 0; i < len(cfg.DateRange); i++ {
+//			dayNumbers, err := ParseDayRange(cfg.DateRange[i])
+//			if err != nil {
+//				return nil, err
+//			}
+//			currIndexLen := len(r.SubTableIndexs)
+//			if currIndexLen > 0 && r.SubTableIndexs[currIndexLen-1] >= dayNumbers[0] {
+//				return nil, errors.ErrDateIllegal
+//			}
+//			for _, v := range dayNumbers {
+//				r.SubTableIndexs = append(r.SubTableIndexs, v)
+//				r.TableToNode[v] = i
+//			}
+//		}
+//	case DateMonthRuleType:
+//		if len(cfg.DateRange) != len(r.Nodes) {
+//			return nil, errors.ErrDateRangeCount
+//		}
+//		for i := 0; i < len(cfg.DateRange); i++ {
+//			monthNumbers, err := ParseMonthRange(cfg.DateRange[i])
+//			if err != nil {
+//				return nil, err
+//			}
+//			currIndexLen := len(r.SubTableIndexs)
+//			if currIndexLen > 0 && r.SubTableIndexs[currIndexLen-1] >= monthNumbers[0] {
+//				return nil, errors.ErrDateIllegal
+//			}
+//			for _, v := range monthNumbers {
+//				r.SubTableIndexs = append(r.SubTableIndexs, v)
+//				r.TableToNode[v] = i
+//			}
+//		}
+//	case DateYearRuleType:
+//		if len(cfg.DateRange) != len(r.Nodes) {
+//			return nil, errors.ErrDateRangeCount
+//		}
+//		for i := 0; i < len(cfg.DateRange); i++ {
+//			yearNumbers, err := ParseYearRange(cfg.DateRange[i])
+//			if err != nil {
+//				return nil, err
+//			}
+//			currIndexLen := len(r.SubTableIndexs)
+//			if currIndexLen > 0 && r.SubTableIndexs[currIndexLen-1] >= yearNumbers[0] {
+//				return nil, errors.ErrDateIllegal
+//			}
+//			for _, v := range yearNumbers {
+//				r.TableToNode[v] = i
+//				r.SubTableIndexs = append(r.SubTableIndexs, v)
+//			}
+//		}
+//	}
+//
+//	if err := parseShard(r, cfg); err != nil {
+//		return nil, err
+//	}
+//
+//	return r, nil
+//}
 
-	switch r.Type {
-	case HashRuleType, RangeRuleType:
-		var sumTables int
-		if len(cfg.Locations) != len(r.Nodes) {
-			return nil, errors.ErrLocationsCount
-		}
-		for i := 0; i < len(cfg.Locations); i++ {
-			for j := 0; j < cfg.Locations[i]; j++ {
-				r.SubTableIndexs = append(r.SubTableIndexs, j+sumTables)
-				r.TableToNode[j+sumTables] = i
-			}
-			sumTables += cfg.Locations[i]
-		}
-	case DateDayRuleType:
-		if len(cfg.DateRange) != len(r.Nodes) {
-			return nil, errors.ErrDateRangeCount
-		}
-		for i := 0; i < len(cfg.DateRange); i++ {
-			dayNumbers, err := ParseDayRange(cfg.DateRange[i])
-			if err != nil {
-				return nil, err
-			}
-			currIndexLen := len(r.SubTableIndexs)
-			if currIndexLen > 0 && r.SubTableIndexs[currIndexLen-1] >= dayNumbers[0] {
-				return nil, errors.ErrDateIllegal
-			}
-			for _, v := range dayNumbers {
-				r.SubTableIndexs = append(r.SubTableIndexs, v)
-				r.TableToNode[v] = i
-			}
-		}
-	case DateMonthRuleType:
-		if len(cfg.DateRange) != len(r.Nodes) {
-			return nil, errors.ErrDateRangeCount
-		}
-		for i := 0; i < len(cfg.DateRange); i++ {
-			monthNumbers, err := ParseMonthRange(cfg.DateRange[i])
-			if err != nil {
-				return nil, err
-			}
-			currIndexLen := len(r.SubTableIndexs)
-			if currIndexLen > 0 && r.SubTableIndexs[currIndexLen-1] >= monthNumbers[0] {
-				return nil, errors.ErrDateIllegal
-			}
-			for _, v := range monthNumbers {
-				r.SubTableIndexs = append(r.SubTableIndexs, v)
-				r.TableToNode[v] = i
-			}
-		}
-	case DateYearRuleType:
-		if len(cfg.DateRange) != len(r.Nodes) {
-			return nil, errors.ErrDateRangeCount
-		}
-		for i := 0; i < len(cfg.DateRange); i++ {
-			yearNumbers, err := ParseYearRange(cfg.DateRange[i])
-			if err != nil {
-				return nil, err
-			}
-			currIndexLen := len(r.SubTableIndexs)
-			if currIndexLen > 0 && r.SubTableIndexs[currIndexLen-1] >= yearNumbers[0] {
-				return nil, errors.ErrDateIllegal
-			}
-			for _, v := range yearNumbers {
-				r.TableToNode[v] = i
-				r.SubTableIndexs = append(r.SubTableIndexs, v)
-			}
-		}
-	}
-
-	if err := parseShard(r, cfg); err != nil {
-		return nil, err
-	}
-
-	return r, nil
-}
-
-func parseShard(r *Rule, cfg *config.ShardConfig) error {
-	switch r.Type {
-	case HashRuleType:
-		r.Shard = &HashShard{ShardNum: len(r.TableToNode)}
-	case RangeRuleType:
-		rs, err := ParseNumSharding(cfg.Locations, cfg.TableRowLimit)
-		if err != nil {
-			return err
-		}
-
-		if len(rs) != len(r.TableToNode) {
-			return fmt.Errorf("range space %d not equal tables %d", len(rs), len(r.TableToNode))
-		}
-
-		r.Shard = &NumRangeShard{Shards: rs}
-	case DateDayRuleType:
-		r.Shard = &DateDayShard{}
-	case DateMonthRuleType:
-		r.Shard = &DateMonthShard{}
-	case DateYearRuleType:
-		r.Shard = &DateYearShard{}
-	default:
-		r.Shard = &DefaultShard{}
-	}
-
-	return nil
-}
+//func parseShard(r *Rule, cfg *config.ShardConfig) error {
+//	switch r.Type {
+//	case HashRuleType:
+//		r.Shard = &HashShard{ShardNum: len(r.TableToNode)}
+//	case RangeRuleType:
+//		rs, err := ParseNumSharding(cfg.Locations, cfg.TableRowLimit)
+//		if err != nil {
+//			return err
+//		}
+//
+//		if len(rs) != len(r.TableToNode) {
+//			return fmt.Errorf("range space %d not equal tables %d", len(rs), len(r.TableToNode))
+//		}
+//
+//		r.Shard = &NumRangeShard{Shards: rs}
+//	case DateDayRuleType:
+//		r.Shard = &DateDayShard{}
+//	case DateMonthRuleType:
+//		r.Shard = &DateMonthShard{}
+//	case DateYearRuleType:
+//		r.Shard = &DateYearShard{}
+//	default:
+//		r.Shard = &DefaultShard{}
+//	}
+//
+//	return nil
+//}
 
 func includeNode(nodes []string, node string) bool {
 	for _, n := range nodes {

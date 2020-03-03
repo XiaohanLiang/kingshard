@@ -313,20 +313,24 @@ func (c *ClientConn) dispatch(data []byte) error {
 	cmd := data[0]
 	data = data[1:]
 
-	hack.Blue("New: \n command = %d \n sql = %s", cmd, string(data))
 
 	switch cmd {
 	case mysql.COM_QUIT:
+		hack.Blue("New: COM_QUIT    sql = %s", string(data))
 		c.handleRollback()
 		c.Close()
 		return nil
 	case mysql.COM_QUERY:
+		hack.Blue("New: COM_QUERY    sql = %s", string(data))
 		return c.handleQuery(hack.String(data))
 	case mysql.COM_PING:
+		hack.Blue("New: COM_PING    sql = %s", string(data))
 		return c.writeOK(nil)
 	case mysql.COM_INIT_DB:
+		hack.Blue("New: COM_INIT_DB    sql = %s", string(data))
 		return c.handleUseDB(hack.String(data))
 	default:
+		hack.Blue("New: Default    sql = %s", string(data))
 		msg := fmt.Sprintf("command %d not supported now", cmd)
 		golog.Error("ClientConn", "dispatch", msg, 0)
 		return mysql.NewError(mysql.ER_UNKNOWN_ERROR, msg)

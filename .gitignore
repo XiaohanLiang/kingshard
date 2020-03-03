@@ -7,3 +7,4 @@ y.output
 core/hack/version.go
 .vscode/
 kingshard
+*.log

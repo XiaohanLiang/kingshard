@@ -23,7 +23,11 @@ import (
 )
 
 func Red(format string,a... interface{}) {
-	f,b,d := 31,47,1
+	f,b,d := 31,40,1
+	fmt.Printf(" %c[%d;%d;%dm(%s)%c[0m \n", 0x1B, f, b, d, fmt.Sprintf(format, a...)  ,0x1B)
+}
+func Yell(format string,a... interface{}) {
+	f,b,d := 33,40,1
 	fmt.Printf(" %c[%d;%d;%dm(%s)%c[0m \n", 0x1B, f, b, d, fmt.Sprintf(format, a...)  ,0x1B)
 }
 

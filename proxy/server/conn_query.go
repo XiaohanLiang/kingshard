@@ -72,6 +72,7 @@ func (c *ClientConn) handleQuery(sql string) (err error) {
 	} else {
 		executeDB, err = c.GetExecDB(tokens, sql)
 	}
+	hack.Yell("1")
 
 	if err != nil {
 		//this SQL doesn't need execute in the backend.
@@ -89,8 +90,11 @@ func (c *ClientConn) handleQuery(sql string) (err error) {
 		return errors.ErrNoDatabase
 	}
 
-	//get connection in DB
-	conn, err := c.getBackendConn(executeDB.ExecNode, executeDB.IsSlave)
+	conn, err = c.getBackendConn(GetServer(), false)
+	if err != nil {
+		return
+	}
+
 	defer c.closeConn(conn, false)
 	if err != nil {
 		return err

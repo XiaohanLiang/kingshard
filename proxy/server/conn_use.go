@@ -16,10 +16,8 @@ package server
 
 import (
 	"fmt"
-	"github.com/flike/kingshard/core/hack"
-
 	"github.com/flike/kingshard/backend"
-	"github.com/flike/kingshard/mysql"
+	"github.com/flike/kingshard/core/hack"
 )
 
 func (c *ClientConn) handleUseDB(dbName string) error {
@@ -29,22 +27,14 @@ func (c *ClientConn) handleUseDB(dbName string) error {
 	if len(dbName) == 0 {
 		return fmt.Errorf("must have database, the length of dbName is zero")
 	}
-	if c.schema == nil {
-		return mysql.NewDefaultError(mysql.ER_NO_DB_ERROR)
-	}
 
-	svr,err := GetServerNode("127.0.0.1:3306")
+	//co = GetConnection()
+	svr := GetServer()
+	co,err = c.getBackendConn(svr,false)
 	if err != nil {
-		hack.Red("Cannot get node you dick headed, err = %v ",err)
+		hack.Yell("Failed")
 		return err
 	}
-
-	co, err = c.getBackendConn(svr, true)
-	defer c.closeConn(co, false)
-	if err != nil {
-		return err
-	}
-
 	if err = co.UseDB(dbName); err != nil {
 		//reset the client database to null
 		c.db = ""

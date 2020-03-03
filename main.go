@@ -38,7 +38,7 @@ func main() {
 
 	var (
 		logpath = ""
-		addr    = ""
+		addr    = "0.0.0.0:9696"
 		//charset = ""
 	)
 

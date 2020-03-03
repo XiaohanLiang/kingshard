@@ -16,6 +16,7 @@ package errors
 
 import (
 	"errors"
+	"github.com/flike/kingshard/core/hack"
 )
 
 var (
@@ -74,3 +75,10 @@ var (
 
 	ErrInternalServer   = errors.New("internal server error")
 )
+
+func Check(v interface{}) {
+	if v != nil {
+		hack.Red("[ERROR] %v",v)
+		panic(v)
+	}
+}
