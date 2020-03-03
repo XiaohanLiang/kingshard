@@ -227,14 +227,15 @@ func (c *ClientConn) readHandshakeResponse() error {
 	auth := data[pos : pos+authLen]
 
 	//check user
-	if _, ok := c.proxy.users[c.user]; !ok {
-		golog.Error("ClientConn", "readHandshakeResponse", "error", 0,
-			"auth", auth,
-			"client_user", c.user,
-			"config_set_user", c.user,
-			"passworld", c.proxy.users[c.user])
-		return mysql.NewDefaultError(mysql.ER_ACCESS_DENIED_ERROR, c.user, c.c.RemoteAddr().String(), "Yes")
-	}
+	fmt.Printf("Used auth = %v \n",auth)
+	//if _, ok := c.proxy.users[c.user]; !ok {
+	//	golog.Error("ClientConn", "readHandshakeResponse", "error", 0,
+	//		"auth", auth,
+	//		"client_user", c.user,
+	//		"config_set_user", c.user,
+	//		"passworld", c.proxy.users[c.user])
+	//	return mysql.NewDefaultError(mysql.ER_ACCESS_DENIED_ERROR, c.user, c.c.RemoteAddr().String(), "Yes")
+	//}
 
 	//check password
 	//checkAuth := mysql.CalcPassword(c.salt, []byte(c.proxy.users[c.user]))
@@ -288,21 +289,6 @@ func (c *ClientConn) Run() {
 			return
 		}
 
-		if c.configVer != c.proxy.configVer {
-			err := c.reloadConfig()
-			if nil != err {
-				golog.Error("ClientConn", "Run",
-					err.Error(), c.connectionId,
-				)
-				c.writeError(err)
-				return
-			}
-			c.configVer = c.proxy.configVer
-			golog.Debug("ClientConn", "Run",
-				fmt.Sprintf("config reload ok, ver:%d", c.configVer), c.connectionId,
-			)
-		}
-
 		if err := c.dispatch(data); err != nil {
 			c.proxy.counter.IncrErrLogTotal()
 			golog.Error("ClientConn", "Run",
@@ -327,7 +313,7 @@ func (c *ClientConn) dispatch(data []byte) error {
 	cmd := data[0]
 	data = data[1:]
 
-	hack.Blue("New: \n command = %d \n sql = %s",cmd,string(data))
+	hack.Blue("New: \n command = %d \n sql = %s", cmd, string(data))
 
 	switch cmd {
 	case mysql.COM_QUIT:
@@ -340,8 +326,6 @@ func (c *ClientConn) dispatch(data []byte) error {
 		return c.writeOK(nil)
 	case mysql.COM_INIT_DB:
 		return c.handleUseDB(hack.String(data))
-	case mysql.COM_SET_OPTION:
-		return c.writeEOF(0)
 	default:
 		msg := fmt.Sprintf("command %d not supported now", cmd)
 		golog.Error("ClientConn", "dispatch", msg, 0)
@@ -416,14 +400,3 @@ func (c *ClientConn) writeEOFBatch(total []byte, status uint16, direct bool) ([]
 	return c.writePacketBatch(total, data, direct)
 }
 
-func (c *ClientConn) reloadConfig() error {
-	c.proxy.configUpdateMutex.RLock()
-	defer c.proxy.configUpdateMutex.RUnlock()
-	c.schema = c.proxy.GetSchema(c.user)
-	if nil == c.schema {
-		return fmt.Errorf("schema of user [%s] is null or user is deleted", c.user)
-	}
-	c.nodes = c.proxy.nodes
-
-	return nil
-}

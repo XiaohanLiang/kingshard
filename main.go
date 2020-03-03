@@ -15,7 +15,6 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"os"
 	"os/signal"
@@ -24,16 +23,9 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/flike/kingshard/config"
 	"github.com/flike/kingshard/core/golog"
-	"github.com/flike/kingshard/monitor"
 	"github.com/flike/kingshard/proxy/server"
-	"github.com/flike/kingshard/web"
 )
-
-var configFile *string = flag.String("config", "/etc/ks.yaml", "kingshard config file")
-var logLevel *string = flag.String("log-level", "", "log level [debug|info|warn|error], default error")
-var version *bool = flag.Bool("v", false, "the version of kingshard")
 
 const (
 	sqlLogName = "sql.log"
@@ -41,89 +33,41 @@ const (
 	MaxLogSize = 1024 * 1024 * 1024
 )
 
-var (
-	BuildDate    string
-	BuildVersion string
-)
-
-const banner string = `
-    __   _                  __                   __
-   / /__(_)___  ____ ______/ /_  ____ __________/ /
-  / //_/ / __ \/ __ \/ ___/ __ \ / __\/ ___/ __  /
- / ,< / / / / / /_/ (__  ) / / / /_/ / /  / /_/ /
-/_/|_/_/_/ /_/\__, /____/_/ /_/\__,_/_/   \__,_/
-             /____/
-`
 
 func main() {
-	fmt.Print(banner)
-	runtime.GOMAXPROCS(runtime.NumCPU())
-	flag.Parse()
-	fmt.Printf("Git commit:%s\n", BuildVersion)
-	fmt.Printf("Build time:%s\n", BuildDate)
-	if *version {
-		return
-	}
-	if len(*configFile) == 0 {
-		fmt.Println("must use a config file")
-		return
-	}
 
-	cfg, err := config.ParseConfigFile(*configFile)
-	if err != nil {
-		fmt.Printf("parse config file error:%v\n", err.Error())
-		return
-	}
+	var (
+		logpath = ""
+		addr    = ""
+		//charset = ""
+	)
+
+	runtime.GOMAXPROCS(runtime.NumCPU())
 
 	//when the log file size greater than 1GB, kingshard will generate a new file
-	if len(cfg.LogPath) != 0 {
-		sysFilePath := path.Join(cfg.LogPath, sysLogName)
-		sysFile, err := golog.NewRotatingFileHandler(sysFilePath, MaxLogSize, 1)
-		if err != nil {
-			fmt.Printf("new log file error:%v\n", err.Error())
-			return
-		}
-		golog.GlobalSysLogger = golog.New(sysFile, golog.Lfile|golog.Ltime|golog.Llevel)
-
-		sqlFilePath := path.Join(cfg.LogPath, sqlLogName)
-		sqlFile, err := golog.NewRotatingFileHandler(sqlFilePath, MaxLogSize, 1)
-		if err != nil {
-			fmt.Printf("new log file error:%v\n", err.Error())
-			return
-		}
-		golog.GlobalSqlLogger = golog.New(sqlFile, golog.Lfile|golog.Ltime|golog.Llevel)
+	sysFilePath := path.Join(logpath, sysLogName)
+	sysFile, err := golog.NewRotatingFileHandler(sysFilePath, MaxLogSize, 1)
+	if err != nil {
+		fmt.Printf("new log file error:%v\n", err.Error())
+		return
 	}
-
-	if *logLevel != "" {
-		setLogLevel(*logLevel)
-	} else {
-		setLogLevel(cfg.LogLevel)
+	sqlFilePath := path.Join(logpath, sqlLogName)
+	sqlFile, err := golog.NewRotatingFileHandler(sqlFilePath, MaxLogSize, 1)
+	if err != nil {
+		fmt.Printf("new log file error:%v\n", err.Error())
+		return
 	}
+	golog.GlobalSysLogger = golog.New(sysFile, golog.Lfile|golog.Ltime|golog.Llevel)
+	golog.GlobalSqlLogger = golog.New(sqlFile, golog.Lfile|golog.Ltime|golog.Llevel)
+
+	setLogLevel("debug")
 
 	var svr *server.Server
-	var apiSvr *web.ApiServer
-	var prometheusSvr *monitor.Prometheus
-	svr, err = server.NewServer(cfg)
+	svr, err = server.NewServer(addr)
 	if err != nil {
 		golog.Error("main", "main", err.Error(), 0)
 		golog.GlobalSysLogger.Close()
 		golog.GlobalSqlLogger.Close()
-		return
-	}
-	apiSvr, err = web.NewApiServer(cfg, svr)
-	if err != nil {
-		golog.Error("main", "main", err.Error(), 0)
-		golog.GlobalSysLogger.Close()
-		golog.GlobalSqlLogger.Close()
-		svr.Close()
-		return
-	}
-	prometheusSvr, err = monitor.NewPrometheus(cfg.PrometheusAddr, svr)
-	if err != nil {
-		golog.Error("main", "main", err.Error(), 0)
-		golog.GlobalSysLogger.Close()
-		golog.GlobalSqlLogger.Close()
-		svr.Close()
 		return
 	}
 
@@ -148,17 +92,18 @@ func main() {
 				golog.Info("main", "main", "Ignore broken pipe signal", 0)
 			} else if sig == syscall.SIGUSR1 {
 				golog.Info("main", "main", "Got update config signal", 0)
-				newCfg, err := config.ParseConfigFile(*configFile)
+				//newCfg, err := config.ParseConfigFile("Reload/Update config")
+				newCfg := "Reload/Update config"
 				if err != nil {
 					golog.Error("main", "main", fmt.Sprintf("parse config file error:%s", err.Error()), 0)
 				} else {
-					svr.UpdateConfig(newCfg)
+					fmt.Printf("Heres the place where you would update your config %v \n", newCfg)
+					//svr.UpdateConfig(newCfg)
 				}
 			}
 		}
 	}()
-	go apiSvr.Run()
-	go prometheusSvr.Run()
+
 	svr.Run()
 }
 

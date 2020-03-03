@@ -33,15 +33,6 @@ type ExecuteDB struct {
 	sql      string
 }
 
-func (c *ClientConn) isBlacklistSql(sql string) bool {
-	fingerprint := mysql.GetFingerprint(sql)
-	md5 := mysql.GetMd5(fingerprint)
-	if _, ok := c.proxy.blacklistSqls[c.proxy.blacklistSqlsIndex].sqls[md5]; ok {
-		return true
-	}
-	return false
-}
-
 //preprocessing sql before parse sql
 func (c *ClientConn) preHandleShard(sql string) (bool, error) {
 	var rs []*mysql.Result
@@ -198,14 +189,6 @@ func (c *ClientConn) setExecuteNode(tokens []string, tokensLen int, executeDB *E
 				executeDB.IsSlave = true
 			}
 		}
-	}
-
-	if executeDB.ExecNode == nil {
-		defaultRule := c.schema.rule.DefaultRule
-		if len(defaultRule.Nodes) == 0 {
-			return errors.ErrNoDefaultNode
-		}
-		executeDB.ExecNode = c.proxy.GetNode(defaultRule.Nodes[0])
 	}
 
 	return nil

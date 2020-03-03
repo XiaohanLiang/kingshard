@@ -16,6 +16,7 @@ package server
 
 import (
 	"fmt"
+	"github.com/flike/kingshard/core/hack"
 
 	"github.com/flike/kingshard/backend"
 	"github.com/flike/kingshard/mysql"
@@ -32,11 +33,13 @@ func (c *ClientConn) handleUseDB(dbName string) error {
 		return mysql.NewDefaultError(mysql.ER_NO_DB_ERROR)
 	}
 
-	nodeName := c.schema.rule.DefaultRule.Nodes[0]
+	svr,err := GetServerNode("127.0.0.1:3306")
+	if err != nil {
+		hack.Red("Cannot get node you dick headed, err = %v ",err)
+		return err
+	}
 
-	n := c.proxy.GetNode(nodeName)
-	//get the connection from slave preferentially
-	co, err = c.getBackendConn(n, true)
+	co, err = c.getBackendConn(svr, true)
 	defer c.closeConn(co, false)
 	if err != nil {
 		return err

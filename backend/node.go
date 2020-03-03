@@ -50,11 +50,8 @@ type Node struct {
 }
 
 func (n *Node) CheckNode() {
-	//to do
-	//1 check connection alive
 	for n.Online {
 		n.checkMaster()
-		n.checkSlave()
 		time.Sleep(16 * time.Second)
 	}
 }

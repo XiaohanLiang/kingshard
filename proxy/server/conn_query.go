@@ -19,7 +19,6 @@ import (
 	"github.com/flike/kingshard/core/parser"
 	"runtime"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/flike/kingshard/backend"
@@ -27,7 +26,6 @@ import (
 	"github.com/flike/kingshard/core/golog"
 	"github.com/flike/kingshard/core/hack"
 	"github.com/flike/kingshard/mysql"
-	"github.com/flike/kingshard/proxy/router"
 	pp "github.com/flike/kingshard/sqlparser"
 )
 
@@ -174,40 +172,40 @@ func (c *ClientConn) getBackendConn(n *backend.Node, fromSlave bool) (co *backen
 }
 
 //获取shard的conn，第一个参数表示是不是select
-func (c *ClientConn) getShardConns(fromSlave bool, plan *router.Plan) (map[string]*backend.BackendConn, error) {
-	var err error
-	if plan == nil || len(plan.RouteNodeIndexs) == 0 {
-		return nil, errors.ErrNoRouteNode
-	}
-
-	nodesCount := len(plan.RouteNodeIndexs)
-	nodes := make([]*backend.Node, 0, nodesCount)
-	for i := 0; i < nodesCount; i++ {
-		nodeIndex := plan.RouteNodeIndexs[i]
-		nodes = append(nodes, c.proxy.GetNode(plan.Rule.Nodes[nodeIndex]))
-	}
-	if c.isInTransaction() {
-		if 1 < len(nodes) {
-			return nil, errors.ErrTransInMulti
-		}
-		//exec in multi node
-		if len(c.txConns) == 1 && c.txConns[nodes[0]] == nil {
-			return nil, errors.ErrTransInMulti
-		}
-	}
-	conns := make(map[string]*backend.BackendConn)
-	var co *backend.BackendConn
-	for _, n := range nodes {
-		co, err = c.getBackendConn(n, fromSlave)
-		if err != nil {
-			break
-		}
-
-		conns[n.Cfg.Name] = co
-	}
-
-	return conns, err
-}
+//func (c *ClientConn) getShardConns(fromSlave bool, plan *router.Plan) (map[string]*backend.BackendConn, error) {
+//	var err error
+//	if plan == nil || len(plan.RouteNodeIndexs) == 0 {
+//		return nil, errors.ErrNoRouteNode
+//	}
+//
+//	nodesCount := len(plan.RouteNodeIndexs)
+//	nodes := make([]*backend.Node, 0, nodesCount)
+//	for i := 0; i < nodesCount; i++ {
+//		nodeIndex := plan.RouteNodeIndexs[i]
+//		nodes = append(nodes, c.proxy.GetNode(plan.Rule.Nodes[nodeIndex]))
+//	}
+//	if c.isInTransaction() {
+//		if 1 < len(nodes) {
+//			return nil, errors.ErrTransInMulti
+//		}
+//		//exec in multi node
+//		if len(c.txConns) == 1 && c.txConns[nodes[0]] == nil {
+//			return nil, errors.ErrTransInMulti
+//		}
+//	}
+//	conns := make(map[string]*backend.BackendConn)
+//	var co *backend.BackendConn
+//	for _, n := range nodes {
+//		co, err = c.getBackendConn(n, fromSlave)
+//		if err != nil {
+//			break
+//		}
+//
+//		conns[n.Cfg.Name] = co
+//	}
+//
+//	return conns, err
+//}
 
 func (c *ClientConn) executeInNode(conn *backend.BackendConn, sql string, args []interface{}) ([]*mysql.Result, error) {
 	var state string
@@ -219,103 +217,23 @@ func (c *ClientConn) executeInNode(conn *backend.BackendConn, sql string, args [
 		state = "OK"
 	}
 	execTime := float64(time.Now().UnixNano()-startTime) / float64(time.Millisecond)
-	if strings.ToLower(c.proxy.logSql[c.proxy.logSqlIndex]) != golog.LogSqlOff &&
-		execTime >= float64(c.proxy.slowLogTime[c.proxy.slowLogTimeIndex]) {
-		c.proxy.counter.IncrSlowLogTotal()
-		golog.Logging(golog.Log{
-			Time:     time.Now().Unix(),
-			Duration: execTime,
-			State:    state,
-			Action:   "Select",
-			Table:    "Users",
-			Database: "Test",
-			Sql:      sql,
-			TargetIp: conn.GetAddr(),
-			SourceIp: c.c.RemoteAddr().String(),
-		})
-	}
+	golog.Logging(golog.Log{
+		OperateTime: time.Now().Unix(),
+		Duration:    execTime,
+		State:       state,
+		Action:      "Select",
+		Table:       "Users",
+		Database:    "Test",
+		Sql:         sql,
+		TargetIp:    conn.GetAddr(),
+		SourceIp:    c.c.RemoteAddr().String(),
+	})
 
 	if err != nil {
 		return nil, err
 	}
 
 	return []*mysql.Result{r}, err
-}
-
-func (c *ClientConn) executeInMultiNodes(conns map[string]*backend.BackendConn, sqls map[string][]string, args []interface{}) ([]*mysql.Result, error) {
-	if len(conns) != len(sqls) {
-		golog.Error("ClientConn", "executeInMultiNodes", errors.ErrConnNotEqual.Error(), c.connectionId,
-			"conns", conns,
-			"sqls", sqls,
-		)
-		return nil, errors.ErrConnNotEqual
-	}
-
-	var wg sync.WaitGroup
-
-	if len(conns) == 0 {
-		return nil, errors.ErrNoPlan
-	}
-
-	wg.Add(len(conns))
-
-	resultCount := 0
-	for _, sqlSlice := range sqls {
-		resultCount += len(sqlSlice)
-	}
-
-	rs := make([]interface{}, resultCount)
-
-	f := func(rs []interface{}, i int, execSqls []string, co *backend.BackendConn) {
-		var state string
-		for _, v := range execSqls {
-			startTime := time.Now().UnixNano()
-			r, err := co.Execute(v, args...)
-			if err != nil {
-				state = "ERROR"
-				rs[i] = err
-			} else {
-				state = "OK"
-				rs[i] = r
-			}
-			execTime := float64(time.Now().UnixNano()-startTime) / float64(time.Millisecond)
-			if c.proxy.logSql[c.proxy.logSqlIndex] != golog.LogSqlOff &&
-				execTime >= float64(c.proxy.slowLogTime[c.proxy.slowLogTimeIndex]) {
-				c.proxy.counter.IncrSlowLogTotal()
-				golog.OutputSql(state, "%.1fms - %s->%s:%s",
-					execTime,
-					c.c.RemoteAddr(),
-					co.GetAddr(),
-					v,
-				)
-			}
-			i++
-		}
-		wg.Done()
-	}
-
-	offset := 0
-	for nodeName, co := range conns {
-		s := sqls[nodeName] //[]string
-		go f(rs, offset, s, co)
-		offset += len(s)
-	}
-
-	wg.Wait()
-
-	var err error
-	r := make([]*mysql.Result, resultCount)
-	for i, v := range rs {
-		if e, ok := v.(error); ok {
-			err = e
-			break
-		}
-		if rs[i] != nil {
-			r[i] = rs[i].(*mysql.Result)
-		}
-	}
-
-	return r, err
 }
 
 func (c *ClientConn) closeConn(conn *backend.BackendConn, rollback bool) {
@@ -370,30 +288,30 @@ func (c *ClientConn) newEmptyResultset(stmt *pp.Select) *mysql.Resultset {
 	return r
 }
 
-func (c *ClientConn) handleExec(stmt pp.Statement, args []interface{}) error {
-	plan, err := c.schema.rule.BuildPlan(c.db, stmt)
-	if err != nil {
-		return err
-	}
-	conns, err := c.getShardConns(false, plan)
-	defer c.closeShardConns(conns, err != nil)
-	if err != nil {
-		golog.Error("ClientConn", "handleExec", err.Error(), c.connectionId)
-		return err
-	}
-	if conns == nil {
-		return c.writeOK(nil)
-	}
-
-	var rs []*mysql.Result
-
-	rs, err = c.executeInMultiNodes(conns, plan.RewrittenSqls, args)
-	if err == nil {
-		err = c.mergeExecResult(rs)
-	}
-
-	return nil
-}
+//func (c *ClientConn) handleExec(stmt pp.Statement, args []interface{}) error {
+//	plan, err := c.schema.rule.BuildPlan(c.db, stmt)
+//	if err != nil {
+//		return err
+//	}
+//	conns, err := c.getShardConns(false, plan)
+//	defer c.closeShardConns(conns, err != nil)
+//	if err != nil {
+//		golog.Error("ClientConn", "handleExec", err.Error(), c.connectionId)
+//		return err
+//	}
+//	if conns == nil {
+//		return c.writeOK(nil)
+//	}
+//
+//	var rs []*mysql.Result
+//
+//	rs, err = c.executeInMultiNodes(conns, plan.RewrittenSqls, args)
+//	if err == nil {
+//		err = c.mergeExecResult(rs)
+//	}
+//
+//	return nil
+//}
 
 func (c *ClientConn) mergeExecResult(rs []*mysql.Result) error {
 	r := new(mysql.Result)
