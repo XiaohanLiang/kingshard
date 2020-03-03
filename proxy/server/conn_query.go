@@ -26,7 +26,6 @@ import (
 	"github.com/flike/kingshard/core/golog"
 	"github.com/flike/kingshard/core/hack"
 	"github.com/flike/kingshard/mysql"
-	pp "github.com/flike/kingshard/sqlparser"
 )
 
 func (c *ClientConn) handleQuery(sql string) (err error) {
@@ -264,58 +263,6 @@ func (c *ClientConn) closeShardConns(conns map[string]*backend.BackendConn, roll
 		co.Close()
 	}
 }
-
-func (c *ClientConn) newEmptyResultset(stmt *pp.Select) *mysql.Resultset {
-	r := new(mysql.Resultset)
-	r.Fields = make([]*mysql.Field, len(stmt.SelectExprs))
-
-	for i, expr := range stmt.SelectExprs {
-		r.Fields[i] = &mysql.Field{}
-		switch e := expr.(type) {
-		case *pp.StarExpr:
-			r.Fields[i].Name = []byte("*")
-		case *pp.NonStarExpr:
-			if e.As != nil {
-				r.Fields[i].Name = e.As
-				r.Fields[i].OrgName = hack.Slice(nstring(e.Expr))
-			} else {
-				r.Fields[i].Name = hack.Slice(nstring(e.Expr))
-			}
-		default:
-			r.Fields[i].Name = hack.Slice(nstring(e))
-		}
-	}
-
-	r.Values = make([][]interface{}, 0)
-	r.RowDatas = make([]mysql.RowData, 0)
-
-	return r
-}
-
-//func (c *ClientConn) handleExec(stmt pp.Statement, args []interface{}) error {
-//	plan, err := c.schema.rule.BuildPlan(c.db, stmt)
-//	if err != nil {
-//		return err
-//	}
-//	conns, err := c.getShardConns(false, plan)
-//	defer c.closeShardConns(conns, err != nil)
-//	if err != nil {
-//		golog.Error("ClientConn", "handleExec", err.Error(), c.connectionId)
-//		return err
-//	}
-//	if conns == nil {
-//		return c.writeOK(nil)
-//	}
-//
-//	var rs []*mysql.Result
-//
-//	rs, err = c.executeInMultiNodes(conns, plan.RewrittenSqls, args)
-//	if err == nil {
-//		err = c.mergeExecResult(rs)
-//	}
-//
-//	return nil
-//}
 
 func (c *ClientConn) mergeExecResult(rs []*mysql.Result) error {
 	r := new(mysql.Result)

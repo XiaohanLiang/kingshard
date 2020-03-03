@@ -16,27 +16,19 @@ package server
 
 import (
 	"fmt"
-	"github.com/flike/kingshard/backend"
-	"github.com/flike/kingshard/core/hack"
 )
 
 func (c *ClientConn) handleUseDB(dbName string) error {
-	var co *backend.BackendConn
-	var err error
 
 	if len(dbName) == 0 {
 		return fmt.Errorf("must have database, the length of dbName is zero")
 	}
 
-	//co = GetConnection()
-	svr := GetServer()
-	co,err = c.getBackendConn(svr,false)
+	conn, err := c.getBackendConn(GetServer(), false)
 	if err != nil {
-		hack.Yell("Failed")
 		return err
 	}
-	if err = co.UseDB(dbName); err != nil {
-		//reset the client database to null
+	if err = conn.UseDB(dbName); err != nil {
 		c.db = ""
 		return err
 	}

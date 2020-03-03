@@ -16,7 +16,6 @@ package server
 
 import (
 	"github.com/flike/kingshard/mysql"
-	"github.com/flike/kingshard/sqlparser"
 )
 
 var paramFieldData []byte
@@ -37,8 +36,6 @@ type Stmt struct {
 	columns int
 
 	args []interface{}
-
-	s sqlparser.Statement
 
 	sql string
 }
