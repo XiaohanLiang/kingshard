@@ -15,7 +15,6 @@
 package backend
 
 import (
-	"github.com/flike/kingshard/core/hack"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -32,7 +31,6 @@ const (
 )
 
 type Node struct {
-
 	sync.RWMutex
 	Master *DB
 

@@ -13,17 +13,6 @@ var (
 	Password string               = "my-secret-pw"
 )
 
-func GetConnection() *backend.BackendConn {
-
-	if conn != nil {
-		return conn
-	}
-	co, err := GetServer().Master.GetConn()
-	errors.Check(err)
-	conn = co
-	return conn
-}
-
 func GetServer() *backend.Node {
 	if svr != nil {
 		return svr
