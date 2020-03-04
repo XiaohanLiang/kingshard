@@ -26,12 +26,10 @@ import (
 
 	"github.com/flike/kingshard/backend"
 	"github.com/flike/kingshard/core/golog"
-	"github.com/flike/kingshard/proxy/router"
 )
 
 type Schema struct {
 	nodes map[string]*backend.Node
-	rule  *router.Router
 }
 
 type BlacklistSqls struct {
@@ -56,8 +54,8 @@ type Server struct {
 	//logSql           [2]string
 	//slowLogTimeIndex int32
 	//slowLogTime      [2]int
-	allowipsIndex    BoolIndex
-	allowips         [2][]IPInfo
+	allowipsIndex BoolIndex
+	allowips      [2][]IPInfo
 
 	counter *Counter
 	nodes   map[string]*backend.Node

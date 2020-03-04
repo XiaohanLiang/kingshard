@@ -1,9 +1,9 @@
 package server
 
 import (
-	"testing"
-	"net"
 	"fmt"
+	"net"
+	"testing"
 )
 
 func TestParseIP(t *testing.T) {
