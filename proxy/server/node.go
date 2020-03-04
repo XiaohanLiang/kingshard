@@ -31,7 +31,7 @@ func GetServer() *backend.Node {
 
 	db, err := backend.Open(Addr, User, Password, "", 0)
 	errors.Check(err)
-	svr := &backend.Node{
+	svr = &backend.Node{
 		Master: db,
 		Online: true,
 	}

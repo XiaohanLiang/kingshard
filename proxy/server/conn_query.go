@@ -56,7 +56,6 @@ func (c *ClientConn) handleQuery(sql string) (err error) {
 
 	err = parser.Parse(sql)
 	if err != nil {
-		hack.Red("Parse error : %v ", err)
 		return err
 	}
 
@@ -71,7 +70,6 @@ func (c *ClientConn) handleQuery(sql string) (err error) {
 	} else {
 		executeDB, err = c.GetExecDB(tokens, sql)
 	}
-	hack.Yell("1")
 
 	if err != nil {
 		//this SQL doesn't need execute in the backend.

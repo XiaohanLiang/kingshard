@@ -15,6 +15,7 @@
 package backend
 
 import (
+	"github.com/flike/kingshard/core/hack"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -64,7 +65,6 @@ func (n *Node) GetMasterConn() (*BackendConn, error) {
 	if atomic.LoadInt32(&(db.state)) == Down {
 		return nil, errors.ErrMasterDown
 	}
-
 	return db.GetConn()
 }
 

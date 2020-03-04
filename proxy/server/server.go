@@ -15,7 +15,6 @@
 package server
 
 import (
-	"github.com/flike/kingshard/core/hack"
 	"net"
 	"runtime"
 	"sync/atomic"
@@ -161,7 +160,6 @@ func (s *Server) onConn(c net.Conn) {
 	s.counter.IncrClientConns()
 	conn := s.newClientConn(c) //新建一个conn
 
-	hack.Red("1")
 	defer func() {
 		err := recover()
 		if err != nil {
@@ -181,7 +179,6 @@ func (s *Server) onConn(c net.Conn) {
 	// Step - 1 Read UserInfo from connection
 	// Step - 2 Read Server Config (IpBlock + TimingBlock)
 	// Step - 3 Read User Specified Info
-	hack.Red("2")
 	if allowConnect := conn.IsAllowConnect(); allowConnect == false {
 		err := mysql.NewError(mysql.ER_ACCESS_DENIED_ERROR, "ip address access denied by kingshard.")
 		conn.writeError(err)
