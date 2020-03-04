@@ -19,8 +19,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"sqlproxy/lib/errors"
-	"sqlproxy/lib/golog"
+	"github.com/XiaohanLiang/kingshard/lib/errors"
+	"github.com/XiaohanLiang/kingshard/lib/golog"
 )
 
 const (

@@ -16,7 +16,7 @@ package errors
 
 import (
 	"errors"
-	"sqlproxy/lib/hack"
+	"github.com/XiaohanLiang/kingshard/lib/hack"
 )
 
 var (

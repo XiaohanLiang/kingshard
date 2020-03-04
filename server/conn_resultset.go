@@ -18,9 +18,9 @@ import (
 	"fmt"
 	"strconv"
 
-	"sqlproxy/lib/errors"
-	"sqlproxy/lib/hack"
-	"sqlproxy/mysql"
+	"github.com/XiaohanLiang/kingshard/lib/errors"
+	"github.com/XiaohanLiang/kingshard/lib/hack"
+	"github.com/XiaohanLiang/kingshard/mysql"
 )
 
 func formatValue(value interface{}) ([]byte, error) {

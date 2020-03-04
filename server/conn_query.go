@@ -16,16 +16,16 @@ package server
 
 import (
 	"fmt"
-	"sqlproxy/lib/parser"
+	"github.com/XiaohanLiang/kingshard/lib/parser"
 	"runtime"
 	"strings"
 	"time"
 
-	"sqlproxy/backend"
-	"sqlproxy/lib/errors"
-	"sqlproxy/lib/golog"
-	"sqlproxy/lib/hack"
-	"sqlproxy/mysql"
+	"github.com/XiaohanLiang/kingshard/backend"
+	"github.com/XiaohanLiang/kingshard/lib/errors"
+	"github.com/XiaohanLiang/kingshard/lib/golog"
+	"github.com/XiaohanLiang/kingshard/lib/hack"
+	"github.com/XiaohanLiang/kingshard/mysql"
 )
 
 func (c *ClientConn) handleQuery(sql string) (err error) {
@@ -172,42 +172,6 @@ func (c *ClientConn) getBackendConn(n *backend.Node, fromSlave bool) (co *backen
 	return
 }
 
-//获取shard的conn，第一个参数表示是不是select
-//func (c *ClientConn) getShardConns(fromSlave bool, plan *router.Plan) (map[string]*backend.BackendConn, error) {
-//	var err error
-//	if plan == nil || len(plan.RouteNodeIndexs) == 0 {
-//		return nil, errors.ErrNoRouteNode
-//	}
-//
-//	nodesCount := len(plan.RouteNodeIndexs)
-//	nodes := make([]*backend.Node, 0, nodesCount)
-//	for i := 0; i < nodesCount; i++ {
-//		nodeIndex := plan.RouteNodeIndexs[i]
-//		nodes = append(nodes, c.proxy.GetNode(plan.Rule.Nodes[nodeIndex]))
-//	}
-//	if c.isInTransaction() {
-//		if 1 < len(nodes) {
-//			return nil, errors.ErrTransInMulti
-//		}
-//		//exec in multi node
-//		if len(c.txConns) == 1 && c.txConns[nodes[0]] == nil {
-//			return nil, errors.ErrTransInMulti
-//		}
-//	}
-//	conns := make(map[string]*backend.BackendConn)
-//	var co *backend.BackendConn
-//	for _, n := range nodes {
-//		co, err = c.getBackendConn(n, fromSlave)
-//		if err != nil {
-//			break
-//		}
-//
-//		conns[n.Cfg.Name] = co
-//	}
-//
-//	return conns, err
-//}
-
 func (c *ClientConn) executeInNode(conn *backend.BackendConn, sql string, args []interface{}) ([]*mysql.Result, error) {
 	var state string
 	startTime := time.Now().UnixNano()
@@ -247,39 +211,4 @@ func (c *ClientConn) closeConn(conn *backend.BackendConn, rollback bool) {
 	}
 
 	conn.Close()
-}
-
-func (c *ClientConn) closeShardConns(conns map[string]*backend.BackendConn, rollback bool) {
-	if c.isInTransaction() {
-		return
-	}
-
-	for _, co := range conns {
-		if rollback {
-			co.Rollback()
-		}
-		co.Close()
-	}
-}
-
-func (c *ClientConn) mergeExecResult(rs []*mysql.Result) error {
-	r := new(mysql.Result)
-	for _, v := range rs {
-		r.Status |= v.Status
-		r.AffectedRows += v.AffectedRows
-		if r.InsertId == 0 {
-			r.InsertId = v.InsertId
-		} else if r.InsertId > v.InsertId {
-			//last insert id is first gen id for multi row inserted
-			//see http://dev.mysql.com/doc/refman/5.6/en/information-functions.html#function_last-insert-id
-			r.InsertId = v.InsertId
-		}
-	}
-
-	if r.InsertId > 0 {
-		c.lastInsertId = int64(r.InsertId)
-	}
-	c.affectedRows = int64(r.AffectedRows)
-
-	return c.writeOK(r)
 }

@@ -1,8 +1,8 @@
 package server
 
 import (
-	"sqlproxy/backend"
-	"sqlproxy/lib/errors"
+	"github.com/XiaohanLiang/kingshard/backend"
+	"github.com/XiaohanLiang/kingshard/lib/errors"
 )
 
 var (

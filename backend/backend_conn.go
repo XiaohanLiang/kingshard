@@ -23,7 +23,7 @@ import (
 	"strings"
 	"time"
 
-	"sqlproxy/mysql"
+	"github.com/XiaohanLiang/kingshard/mysql"
 )
 
 var (

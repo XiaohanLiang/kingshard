@@ -12,19 +12,15 @@
 // License for the specific language governing permissions and limitations
 // under the License.
 
-package main
+package kingshard
 
 import (
 	"fmt"
-	"os"
-	"os/signal"
+	"github.com/XiaohanLiang/kingshard/lib/golog"
+	"github.com/XiaohanLiang/kingshard/server"
 	"path"
 	"runtime"
 	"strings"
-	"syscall"
-
-	"sqlproxy/lib/golog"
-	"sqlproxy/server"
 )
 
 const (
@@ -33,8 +29,7 @@ const (
 	MaxLogSize = 1024 * 1024 * 1024
 )
 
-
-func main() {
+func Run() {
 
 	var (
 		logpath = ""
@@ -66,42 +61,13 @@ func main() {
 	svr, err = server.NewServer(addr)
 	if err != nil {
 		golog.Error("main", "main", err.Error(), 0)
-		golog.GlobalSysLogger.Close()
-		golog.GlobalSqlLogger.Close()
 		return
 	}
 
-	sc := make(chan os.Signal, 1)
-	signal.Notify(sc,
-		syscall.SIGINT,
-		syscall.SIGTERM,
-		syscall.SIGQUIT,
-		syscall.SIGPIPE,
-		syscall.SIGUSR1,
-	)
-
-	go func() {
-		for {
-			sig := <-sc
-			if sig == syscall.SIGINT || sig == syscall.SIGTERM || sig == syscall.SIGQUIT {
-				golog.Info("main", "main", "Got signal", 0, "signal", sig)
-				golog.GlobalSysLogger.Close()
-				golog.GlobalSqlLogger.Close()
-				svr.Close()
-			} else if sig == syscall.SIGPIPE {
-				golog.Info("main", "main", "Ignore broken pipe signal", 0)
-			} else if sig == syscall.SIGUSR1 {
-				golog.Info("main", "main", "Got update config signal", 0)
-				//newCfg, err := config.ParseConfigFile("Reload/Update config")
-				newCfg := "Reload/Update config"
-				if err != nil {
-					golog.Error("main", "main", fmt.Sprintf("parse config file error:%s", err.Error()), 0)
-				} else {
-					fmt.Printf("Heres the place where you would update your config %v \n", newCfg)
-					//svr.UpdateConfig(newCfg)
-				}
-			}
-		}
+	defer func() {
+		golog.GlobalSysLogger.Close()
+		golog.GlobalSqlLogger.Close()
+		svr.Close()
 	}()
 
 	svr.Run()
