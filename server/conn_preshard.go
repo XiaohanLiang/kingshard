@@ -15,13 +15,10 @@
 package server
 
 import (
-	"fmt"
 	"strings"
 
 	"sqlproxy/backend"
 	"sqlproxy/lib/errors"
-	"sqlproxy/lib/golog"
-	"sqlproxy/lib/hack"
 	"sqlproxy/mysql"
 )
 
@@ -29,77 +26,6 @@ type ExecuteDB struct {
 	ExecNode *backend.Node
 	IsSlave  bool
 	sql      string
-}
-
-//preprocessing sql before parse sql
-func (c *ClientConn) preHandleShard(sql string) (bool, error) {
-	var rs []*mysql.Result
-	var err error
-	var executeDB *ExecuteDB
-
-	if len(sql) == 0 {
-		return false, errors.ErrCmdUnsupport
-	}
-
-	tokens := strings.FieldsFunc(sql, hack.IsSqlSep)
-
-	if len(tokens) == 0 {
-		return false, errors.ErrCmdUnsupport
-	}
-
-	if c.isInTransaction() {
-		executeDB, err = c.GetTransExecDB(tokens, sql)
-	} else {
-		executeDB, err = c.GetExecDB(tokens, sql)
-	}
-
-	if err != nil {
-		//this SQL doesn't need execute in the backend.
-		if err == errors.ErrIgnoreSQL {
-			err = c.writeOK(nil)
-			if err != nil {
-				return false, err
-			}
-			return true, nil
-		}
-		return false, err
-	}
-	//need shard sql
-	if executeDB == nil {
-		return false, nil
-	}
-	//get connection in DB
-	conn, err := c.getBackendConn(executeDB.ExecNode, executeDB.IsSlave)
-	defer c.closeConn(conn, false)
-	if err != nil {
-		return false, err
-	}
-	//execute.sql may be rewritten in getShowExecDB
-	rs, err = c.executeInNode(conn, executeDB.sql, nil)
-	if err != nil {
-		return false, err
-	}
-
-	if len(rs) == 0 {
-		msg := fmt.Sprintf("result is empty")
-		golog.Error("ClientConn", "handleUnsupport", msg, 0, "sql", sql)
-		return false, mysql.NewError(mysql.ER_UNKNOWN_ERROR, msg)
-	}
-
-	c.lastInsertId = int64(rs[0].InsertId)
-	c.affectedRows = int64(rs[0].AffectedRows)
-
-	if rs[0].Resultset != nil {
-		err = c.writeResultset(c.status, rs[0].Resultset)
-	} else {
-		err = c.writeOK(rs[0])
-	}
-
-	if err != nil {
-		return false, err
-	}
-
-	return true, nil
 }
 
 func (c *ClientConn) GetTransExecDB(tokens []string, sql string) (*ExecuteDB, error) {
@@ -136,7 +62,6 @@ func (c *ClientConn) GetTransExecDB(tokens []string, sql string) (*ExecuteDB, er
 	return executeDB, nil
 }
 
-//if sql need shard return nil, else return the unshard db
 func (c *ClientConn) GetExecDB(tokens []string, sql string) (*ExecuteDB, error) {
 
 	tokensLen := len(tokens)
