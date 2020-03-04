@@ -16,16 +16,16 @@ package server
 
 import (
 	"fmt"
-	"sqlproxy/lib/parser"
+	"github.com/XiaohanLiang/kingshard/lib/parser"
 	"runtime"
 	"strings"
 	"time"
 
-	"sqlproxy/backend"
-	"sqlproxy/lib/errors"
-	"sqlproxy/lib/golog"
-	"sqlproxy/lib/hack"
-	"sqlproxy/mysql"
+	"github.com/XiaohanLiang/kingshard/backend"
+	"github.com/XiaohanLiang/kingshard/lib/errors"
+	"github.com/XiaohanLiang/kingshard/lib/golog"
+	"github.com/XiaohanLiang/kingshard/lib/hack"
+	"github.com/XiaohanLiang/kingshard/mysql"
 )
 
 func (c *ClientConn) handleQuery(sql string) (err error) {

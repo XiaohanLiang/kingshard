@@ -17,9 +17,9 @@ package server
 import (
 	"strings"
 
-	"sqlproxy/backend"
-	"sqlproxy/lib/errors"
-	"sqlproxy/mysql"
+	"github.com/XiaohanLiang/kingshard/backend"
+	"github.com/XiaohanLiang/kingshard/lib/errors"
+	"github.com/XiaohanLiang/kingshard/mysql"
 )
 
 type ExecuteDB struct {

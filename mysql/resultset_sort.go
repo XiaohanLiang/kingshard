@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"sort"
 
-	"sqlproxy/lib/hack"
+	"github.com/XiaohanLiang/kingshard/lib/hack"
 )
 
 const (

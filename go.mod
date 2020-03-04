@@ -1,4 +1,4 @@
-module sqlproxy
+module github.com/XiaohanLiang/kingshard
 
 go 1.13
 

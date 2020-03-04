@@ -15,8 +15,8 @@
 package server
 
 import (
-	"sqlproxy/backend"
-	"sqlproxy/mysql"
+	"github.com/XiaohanLiang/kingshard/backend"
+	"github.com/XiaohanLiang/kingshard/mysql"
 )
 
 func (c *ClientConn) isInTransaction() bool {

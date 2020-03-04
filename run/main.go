@@ -12,15 +12,14 @@
 // License for the specific language governing permissions and limitations
 // under the License.
 
-package server
+package run
 
 import (
 	"fmt"
+	"github.com/XiaohanLiang/kingshard/lib/golog"
+	"github.com/XiaohanLiang/kingshard/server"
 	"path"
 	"runtime"
-	"sqlproxy/lib/golog"
-	"sqlproxy/lib/hack"
-	"sqlproxy/server"
 	"strings"
 )
 
@@ -31,7 +30,7 @@ const (
 )
 
 
-func init() {
+func Run() {
 
 	var (
 		logpath = ""
@@ -69,10 +68,9 @@ func init() {
 	defer func() {
 		golog.GlobalSysLogger.Close()
 		golog.GlobalSqlLogger.Close()
-		hack.Yell("结束服务")
 		svr.Close()
 	}()
-	hack.Yell("开始服务")
+	
 	svr.Run()
 }
 

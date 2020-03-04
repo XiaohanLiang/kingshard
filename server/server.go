@@ -20,12 +20,12 @@ import (
 	"sync/atomic"
 	"time"
 
-	"sqlproxy/mysql"
+	"github.com/XiaohanLiang/kingshard/mysql"
 
 	"sync"
 
-	"sqlproxy/backend"
-	"sqlproxy/lib/golog"
+	"github.com/XiaohanLiang/kingshard/backend"
+	"github.com/XiaohanLiang/kingshard/lib/golog"
 )
 
 type Schema struct {

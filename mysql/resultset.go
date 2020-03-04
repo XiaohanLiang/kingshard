@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"strconv"
 
-	"sqlproxy/lib/hack"
+	"github.com/XiaohanLiang/kingshard/lib/hack"
 )
 
 type RowData []byte

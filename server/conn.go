@@ -22,10 +22,10 @@ import (
 	"runtime"
 	"sync"
 
-	"sqlproxy/backend"
-	"sqlproxy/lib/golog"
-	"sqlproxy/lib/hack"
-	"sqlproxy/mysql"
+	"github.com/XiaohanLiang/kingshard/backend"
+	"github.com/XiaohanLiang/kingshard/lib/golog"
+	"github.com/XiaohanLiang/kingshard/lib/hack"
+	"github.com/XiaohanLiang/kingshard/mysql"
 )
 
 //client <-> proxy
@@ -227,7 +227,7 @@ func (c *ClientConn) readHandshakeResponse() error {
 	auth := data[pos : pos+authLen]
 
 	//check user
-	fmt.Printf("Used auth = %v \n",auth)
+	fmt.Printf(" %s \n",string(auth))
 	//if _, ok := c.proxy.users[c.user]; !ok {
 	//	golog.Error("ClientConn", "readHandshakeResponse", "error", 0,
 	//		"auth", auth,
