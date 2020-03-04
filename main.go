@@ -23,8 +23,8 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/flike/kingshard/core/golog"
-	"github.com/flike/kingshard/server"
+	"sqlproxy/lib/golog"
+	"sqlproxy/server"
 )
 
 const (

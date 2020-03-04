@@ -18,7 +18,7 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/flike/kingshard/core/errors"
+	"sqlproxy/lib/errors"
 )
 
 func Gcd(ary []int) int {

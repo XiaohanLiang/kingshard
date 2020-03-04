@@ -1,8 +1,8 @@
 package server
 
 import (
-	"github.com/flike/kingshard/backend"
-	"github.com/flike/kingshard/core/errors"
+	"sqlproxy/backend"
+	"sqlproxy/lib/errors"
 )
 
 var (

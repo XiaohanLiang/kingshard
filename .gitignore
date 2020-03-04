@@ -4,7 +4,7 @@ pkg
 y.output
 .idea
 *.iml
-core/hack/version.go
+lib/hack/version.go
 .vscode/
 kingshard
 *.log

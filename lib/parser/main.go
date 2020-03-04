@@ -2,7 +2,7 @@ package parser
 
 import (
 	"fmt"
-	"github.com/flike/kingshard/core/errors"
+	"sqlproxy/lib/errors"
 	"github.com/xwb1989/sqlparser"
 	"strings"
 )

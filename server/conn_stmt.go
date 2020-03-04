@@ -15,7 +15,7 @@
 package server
 
 import (
-	"github.com/flike/kingshard/mysql"
+	"sqlproxy/mysql"
 )
 
 var paramFieldData []byte

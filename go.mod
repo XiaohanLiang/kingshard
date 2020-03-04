@@ -1,4 +1,4 @@
-module github.com/flike/kingshard
+module sqlproxy
 
 go 1.13
 
