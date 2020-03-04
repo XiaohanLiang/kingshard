@@ -12,7 +12,7 @@
 // License for the specific language governing permissions and limitations
 // under the License.
 
-package run
+package kingshard
 
 import (
 	"fmt"
@@ -28,7 +28,6 @@ const (
 	sysLogName = "sys.log"
 	MaxLogSize = 1024 * 1024 * 1024
 )
-
 
 func Run() {
 
@@ -70,7 +69,7 @@ func Run() {
 		golog.GlobalSqlLogger.Close()
 		svr.Close()
 	}()
-	
+
 	svr.Run()
 }
 
