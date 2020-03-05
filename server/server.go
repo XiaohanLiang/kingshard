@@ -44,22 +44,19 @@ const (
 )
 
 type Server struct {
-	//cfg  *config.Config
 	addr string
-	//users map[string]string //user : psw
 
-	statusIndex      int32
-	status           [2]int32
-	//logSqlIndex      int32
-	//logSql           [2]string
-	//slowLogTimeIndex int32
-	//slowLogTime      [2]int
-	allowipsIndex BoolIndex
-	allowips      [2][]IPInfo
+	statusIndex    int32
+	status         [2]int32
+	allowipsIndex  BoolIndex
+	allowips       [2][]IPInfo
+	blockedActions []string
+	blockedTables  []string
+	blockedDbs     []string
+	StartTime      string
+	EndTime        string
 
 	counter *Counter
-	nodes   map[string]*backend.Node
-	schemas map[string]*Schema //user : schema of user
 
 	listener net.Listener
 	running  bool
@@ -67,7 +64,6 @@ type Server struct {
 	configUpdateMutex sync.RWMutex
 	configVer         uint32
 }
-
 
 func NewServer(addr string) (*Server, error) {
 	s := new(Server)
@@ -125,7 +121,6 @@ func (s *Server) newClientConn(co net.Conn) *ClientConn {
 	func() {
 		s.configUpdateMutex.RLock()
 		defer s.configUpdateMutex.RUnlock()
-		c.nodes = s.nodes
 		c.proxy = s
 		c.configVer = s.configVer
 	}()
@@ -149,7 +144,6 @@ func (s *Server) newClientConn(co net.Conn) *ClientConn {
 	c.collation = mysql.DEFAULT_COLLATION_ID
 
 	c.stmtId = 0
-	c.stmts = make(map[uint32]*Stmt)
 
 	return c
 }

@@ -63,7 +63,6 @@ type ClientConn struct {
 
 	stmtId uint32
 
-	stmts map[uint32]*Stmt //prepare相关,client端到proxy的stmt
 
 	configVer uint32 //check config version for reload online
 }
