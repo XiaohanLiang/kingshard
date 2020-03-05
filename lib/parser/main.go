@@ -1,42 +1,13 @@
 package parser
 
 import (
-	"fmt"
+	"strings"
+
 	"github.com/XiaohanLiang/kingshard/lib/errors"
 	"github.com/xwb1989/sqlparser"
-	"strings"
 )
 
-var (
-	_actions   = []string{"truncate"}
-	_tables    = []string{"secret"}
-	_databases = []string{"secret"}
-)
-
-
-func Parse(sql string) error {
-
-	subQueries := strings.Split(sql, ";")
-	for _,v := range subQueries {
-		action,tables,databases,err := parse(v)
-		if err != nil {
-			return err
-		}
-		if v,ok := contains(_actions,[]string{action}); ok {
-			return fmt.Errorf("%s 操作被禁止 \n",v)
-		}
-		if v,ok := contains(_tables,tables); ok {
-			return fmt.Errorf("%s 表禁止访问 \n",v)
-		}
-		if v,ok := contains(_databases,databases); ok {
-			return fmt.Errorf("%s 库禁止访问 \n",v)
-		}
-	}
-
-	return nil
-}
-
-func parse(sql string) (action string, tables []string, databases []string, err error) {
+func Parse(sql string) (action string, tables []string, databases []string, err error) {
 
 	var (
 		stmt sqlparser.Statement

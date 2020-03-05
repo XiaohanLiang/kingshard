@@ -16,10 +16,11 @@ package server
 
 import (
 	"fmt"
-	"github.com/XiaohanLiang/kingshard/lib/parser"
 	"runtime"
 	"strings"
 	"time"
+
+	"github.com/XiaohanLiang/kingshard/lib/parser"
 
 	"github.com/XiaohanLiang/kingshard/backend"
 	"github.com/XiaohanLiang/kingshard/lib/errors"
@@ -54,7 +55,7 @@ func (c *ClientConn) handleQuery(sql string) (err error) {
 		executeDB *ExecuteDB
 	)
 
-	err = parser.Parse(sql)
+	action, _, _, err := parser.Parse(sql)
 	if err != nil {
 		return err
 	}
@@ -95,6 +96,18 @@ func (c *ClientConn) handleQuery(sql string) (err error) {
 	defer c.closeConn(conn, false)
 	if err != nil {
 		return err
+	}
+
+	// TODO: Select certain db instance before transaction!
+	if action == "Begin" {
+		c.handleBegin()
+		hack.Yell("Begin transaction")
+		return
+	}
+	if action == "Commit" {
+		c.handleCommit()
+		hack.Yell("Endof transaction")
+		return
 	}
 
 	//execute.sql may be rewritten in getShowExecDB
