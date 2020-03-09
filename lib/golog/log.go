@@ -21,6 +21,7 @@ import (
 	"os"
 	"runtime"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 )
@@ -282,6 +283,10 @@ func Logging(log Log) {
 	if err != nil {
 		panic("damn we cant marshal it! reasons -> " + err.Error())
 	}
+
+	trimed := strings.Replace(string(bytes), "\"", "", -1)
+	trimed = strings.Replace(trimed, "\\", "", -1)
+	bytes = []byte(trimed)
 
 	l := GlobalSqlLogger
 	buf := l.popBuf()
