@@ -76,8 +76,7 @@ func (c *ClientConn) handleQuery(sql string) (err error) {
 	if len(rs) != 0 && rs[0] != nil && rs[0].Resultset != nil {
 		err = c.writeResultset(c.status, rs[0].Resultset)
 	} else {
-		//err = c.writeOK(rs[0])
-		err = c.writeOK(nil)
+		err = c.writeOK(rs[0])
 	}
 
 	log.Type = "output"
