@@ -63,7 +63,6 @@ type ClientConn struct {
 
 	stmtId uint32
 
-
 	configVer uint32 //check config version for reload online
 }
 
@@ -226,7 +225,7 @@ func (c *ClientConn) readHandshakeResponse() error {
 	auth := data[pos : pos+authLen]
 
 	//check user
-	fmt.Printf(" %s \n",string(auth))
+	fmt.Printf(" %s \n", string(auth))
 	//if _, ok := c.proxy.users[c.user]; !ok {
 	//	golog.Error("ClientConn", "readHandshakeResponse", "error", 0,
 	//		"auth", auth,
@@ -312,7 +311,6 @@ func (c *ClientConn) dispatch(data []byte) error {
 	cmd := data[0]
 	data = data[1:]
 
-
 	switch cmd {
 	case mysql.COM_QUIT:
 		hack.Blue("New: COM_QUIT    sql = %s", string(data))
@@ -334,8 +332,6 @@ func (c *ClientConn) dispatch(data []byte) error {
 		golog.Error("ClientConn", "dispatch", msg, 0)
 		return mysql.NewError(mysql.ER_UNKNOWN_ERROR, msg)
 	}
-
-	return nil
 }
 
 func (c *ClientConn) writeOK(r *mysql.Result) error {
@@ -402,4 +398,3 @@ func (c *ClientConn) writeEOFBatch(total []byte, status uint16, direct bool) ([]
 
 	return c.writePacketBatch(total, data, direct)
 }
-

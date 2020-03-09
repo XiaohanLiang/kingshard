@@ -17,6 +17,7 @@ package mysql
 import (
 	"bytes"
 	"encoding/binary"
+	"encoding/json"
 	"fmt"
 	"strconv"
 
@@ -276,6 +277,39 @@ type Resultset struct {
 	Values     [][]interface{}
 
 	RowDatas []RowData
+}
+
+func (r *Result) GetLog(status string) string {
+
+	type Log struct {
+		Status       string
+		RowsAffected uint64
+		Columns      string
+		Values       string
+	}
+
+	if r == nil || r.Resultset == nil {
+		return ""
+	}
+
+	l := Log{
+		RowsAffected: r.AffectedRows,
+		Status:       status,
+	}
+
+	for _, f := range r.Fields {
+		l.Columns = l.Columns + string(f.Name) + " "
+	}
+
+	for _, v := range r.Values {
+		l.Values = l.Values + fmt.Sprintf("%v", v) + " "
+	}
+
+	bytes, err := json.Marshal(l)
+	if err != nil {
+		hack.Yell("Marshal err not nil,%v", err)
+	}
+	return string(bytes)
 }
 
 func (r *Resultset) RowNumber() int {

@@ -260,7 +260,10 @@ func escape(s string, filterEqual bool) string {
 	return string(dest)
 }
 
+// 双引号处理一下
 type Log struct {
+	// indicates if this is a request to mysql or response from it
+	Type        string  `json:"type"`
 	Operator    string  `json:"operator"`
 	OperateTime int64   `json:"operateTime"`
 	Duration    float64 `json:"duration"`

@@ -17,7 +17,6 @@ package server
 import (
 	"fmt"
 	"runtime"
-	"strings"
 	"time"
 
 	"github.com/XiaohanLiang/kingshard/lib/parser"
@@ -25,7 +24,6 @@ import (
 	"github.com/XiaohanLiang/kingshard/backend"
 	"github.com/XiaohanLiang/kingshard/lib/errors"
 	"github.com/XiaohanLiang/kingshard/lib/golog"
-	"github.com/XiaohanLiang/kingshard/lib/hack"
 	"github.com/XiaohanLiang/kingshard/mysql"
 )
 
@@ -51,92 +49,47 @@ func (c *ClientConn) handleQuery(sql string) (err error) {
 	}()
 
 	var (
-		rs        []*mysql.Result
-		executeDB *ExecuteDB
+		rs  []*mysql.Result
+		log golog.Log
 	)
 
-	action, _, _, err := parser.Parse(sql)
+	action, tables, dbs, err := parser.Parse(sql)
 	if err != nil {
 		return err
-	}
-
-	tokens := strings.FieldsFunc(sql, hack.IsSqlSep)
-	if len(tokens) == 0 {
-		return errors.ErrCmdUnsupport
-	}
-
-	// Key-2
-	if c.isInTransaction() {
-		executeDB, err = c.GetTransExecDB(tokens, sql)
-	} else {
-		executeDB, err = c.GetExecDB(tokens, sql)
-	}
-
-	if err != nil {
-		//this SQL doesn't need execute in the backend.
-		if err == errors.ErrIgnoreSQL {
-			err = c.writeOK(nil)
-			if err != nil {
-				return err
-			}
-			return nil
-		}
-		return err
-	}
-
-	if executeDB == nil {
-		return errors.ErrNoDatabase
 	}
 
 	conn, err = c.getBackendConn(GetServer(), false)
-	if err != nil {
-		return
-	}
-
 	defer c.closeConn(conn, false)
 	if err != nil {
-		return err
-	}
-
-	// TODO: Select certain db instance before transaction!
-	if action == "Begin" {
-		c.handleBegin()
-		hack.Yell("Begin transaction")
-		return
-	}
-	if action == "Commit" {
-		c.handleCommit()
-		hack.Yell("Endof transaction")
 		return
 	}
 
-	//execute.sql may be rewritten in getShowExecDB
-	rs, err = c.executeInNode(conn, executeDB.sql, nil)
+	rs, log, err = c.executeInNode(conn, sql, action, tables, dbs)
 	if err != nil {
 		return err
 	}
 
-	if len(rs) == 0 {
-		msg := fmt.Sprintf("result is empty")
-		golog.Error("ClientConn", "handleUnsupport", msg, 0, "sql", sql)
-		return mysql.NewError(mysql.ER_UNKNOWN_ERROR, msg)
+	if isSpecialAction(action) {
+		return
 	}
 
-	if rs[0].Resultset != nil {
+	if len(rs) != 0 && rs[0] != nil && rs[0].Resultset != nil {
 		err = c.writeResultset(c.status, rs[0].Resultset)
 	} else {
-		err = c.writeOK(rs[0])
+		//err = c.writeOK(rs[0])
+		err = c.writeOK(nil)
 	}
 
-	if err != nil {
-		return err
-	}
+	log.Type = "output"
+	log.Sql = rs[0].GetLog(log.State)
+	golog.Logging(log)
 
-	return nil
+	return err
 }
 
 func (c *ClientConn) getBackendConn(n *backend.Node, fromSlave bool) (co *backend.BackendConn, err error) {
 	if !c.isInTransaction() {
+
 		if fromSlave {
 			co, err = n.GetSlaveConn()
 			if err != nil {
@@ -185,33 +138,63 @@ func (c *ClientConn) getBackendConn(n *backend.Node, fromSlave bool) (co *backen
 	return
 }
 
-func (c *ClientConn) executeInNode(conn *backend.BackendConn, sql string, args []interface{}) ([]*mysql.Result, error) {
-	var state string
-	startTime := time.Now().UnixNano()
-	r, err := conn.Execute(sql, args...)
+func isSpecialAction(action string) bool {
+	return action == "Begin" || action == "Commit" || action == "Rollback"
+}
+
+func (c *ClientConn) handleSpecialAction(action string) error {
+
+	switch action {
+	case "Begin":
+		return c.handleBegin()
+	case "Commit":
+		return c.handleCommit()
+	case "Rollback":
+		return c.handleRollback()
+	}
+
+	return errors.ErrCmdUnsupport
+}
+
+func (c *ClientConn) executeInNode(conn *backend.BackendConn, sql string, action string, tables []string, dbs []string) ([]*mysql.Result, golog.Log, error) {
+
+	var (
+		state     string
+		err       error
+		r         *mysql.Result
+		log       golog.Log
+		startTime = time.Now().UnixNano()
+	)
+
+	if isSpecialAction(action) {
+		c.txConns[GetServer()] = conn
+		err = c.handleSpecialAction(action)
+	} else {
+		r, err = conn.Execute(sql)
+	}
+
 	if err != nil {
 		state = "ERROR"
 	} else {
 		state = "OK"
 	}
-	execTime := float64(time.Now().UnixNano()-startTime) / float64(time.Millisecond)
-	golog.Logging(golog.Log{
+
+	log = golog.Log{
+		Type:        "input",
+		Operator:    c.user,
 		OperateTime: time.Now().Unix(),
-		Duration:    execTime,
+		Duration:    float64(time.Now().UnixNano()-startTime) / float64(time.Millisecond),
 		State:       state,
-		Action:      "Select",
-		Table:       "Users",
-		Database:    "Test",
+		Action:      action,
+		Table:       fmt.Sprintf("%v", tables),
+		Database:    fmt.Sprintf("%v", dbs),
 		Sql:         sql,
-		TargetIp:    conn.GetAddr(),
+		TargetIp:    Addr,
 		SourceIp:    c.c.RemoteAddr().String(),
-	})
-
-	if err != nil {
-		return nil, err
 	}
+	golog.Logging(log)
 
-	return []*mysql.Result{r}, err
+	return []*mysql.Result{r}, log, err
 }
 
 func (c *ClientConn) closeConn(conn *backend.BackendConn, rollback bool) {

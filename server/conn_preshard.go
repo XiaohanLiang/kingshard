@@ -15,11 +15,7 @@
 package server
 
 import (
-	"strings"
-
 	"github.com/XiaohanLiang/kingshard/backend"
-	"github.com/XiaohanLiang/kingshard/lib/errors"
-	"github.com/XiaohanLiang/kingshard/mysql"
 )
 
 type ExecuteDB struct {
@@ -28,73 +24,29 @@ type ExecuteDB struct {
 	sql      string
 }
 
-func (c *ClientConn) GetTransExecDB(tokens []string, sql string) (*ExecuteDB, error) {
+func (c *ClientConn) GetTransExecDB(sql string) (*ExecuteDB, error) {
 	var err error
-	tokensLen := len(tokens)
 	executeDB := new(ExecuteDB)
 	executeDB.sql = sql
 
-	//transaction execute in master db
 	executeDB.IsSlave = false
-
-	if 2 <= tokensLen {
-		if tokens[0][0] == mysql.COMMENT_PREFIX {
-			nodeName := strings.Trim(tokens[0], mysql.COMMENT_STRING)
-			if c.schema.nodes[nodeName] != nil {
-				executeDB.ExecNode = c.schema.nodes[nodeName]
-			}
-		}
+	executeDB, err = c.GetExecDB(sql)
+	if err != nil {
+		return nil, err
 	}
-
-	if executeDB.ExecNode == nil {
-		executeDB, err = c.GetExecDB(tokens, sql)
-		if err != nil {
-			return nil, err
-		}
-		if executeDB == nil {
-			return nil, nil
-		}
-		return executeDB, nil
-	}
-	if len(c.txConns) == 1 && c.txConns[executeDB.ExecNode] == nil {
-		return nil, errors.ErrTransInMulti
+	if executeDB == nil {
+		return nil, nil
 	}
 	return executeDB, nil
 }
 
-func (c *ClientConn) GetExecDB(tokens []string, sql string) (*ExecuteDB, error) {
-
-	tokensLen := len(tokens)
-	return c.getSelectExecDB(sql, tokens, tokensLen)
+func (c *ClientConn) GetExecDB(sql string) (*ExecuteDB, error) {
+	return c.getSelectExecDB(sql)
 }
 
-func (c *ClientConn) setExecuteNode(tokens []string, tokensLen int, executeDB *ExecuteDB) error {
-	if 2 <= tokensLen {
-		//for /*node1*/
-		if 1 < len(tokens) && tokens[0][0] == mysql.COMMENT_PREFIX {
-			nodeName := strings.Trim(tokens[0], mysql.COMMENT_STRING)
-			if c.schema.nodes[nodeName] != nil {
-				executeDB.ExecNode = c.schema.nodes[nodeName]
-			}
-			//for /*node1*/ select
-			if strings.ToLower(tokens[1]) == mysql.TK_STR_SELECT {
-				executeDB.IsSlave = true
-			}
-		}
-	}
-
-	return nil
-}
-
-//get the execute database for select sql
-func (c *ClientConn) getSelectExecDB(sql string, tokens []string, tokensLen int) (*ExecuteDB, error) {
+func (c *ClientConn) getSelectExecDB(sql string) (*ExecuteDB, error) {
 	executeDB := new(ExecuteDB)
 	executeDB.sql = sql
 	executeDB.IsSlave = true
-
-	err := c.setExecuteNode(tokens, tokensLen, executeDB)
-	if err != nil {
-		return nil, err
-	}
 	return executeDB, nil
 }
