@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/XiaohanLiang/kingshard/lib/hack"
 )
@@ -309,7 +310,12 @@ func (r *Result) GetLog(status string) string {
 	if err != nil {
 		hack.Yell("Marshal err not nil,%v", err)
 	}
-	return string(bytes)
+
+	trimmed := strings.Replace(string(bytes), "{", "[", -1)
+	trimmed = strings.Replace(trimmed, "}", "]", -1)
+	trimmed = strings.Replace(trimmed, "\"", "", -1)
+
+	return trimmed
 }
 
 func (r *Resultset) RowNumber() int {

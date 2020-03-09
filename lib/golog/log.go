@@ -264,17 +264,17 @@ func escape(s string, filterEqual bool) string {
 // 双引号处理一下
 type Log struct {
 	// indicates if this is a request to mysql or response from it
-	Type        string  `json:"type"`
-	Operator    string  `json:"operator"`
-	OperateTime int64   `json:"operateTime"`
-	Duration    float64 `json:"duration"`
-	State       string  `json:"state"`
-	Action      string  `json:"action"`
-	Table       string  `json:"table"`
-	Database    string  `json:"database"`
-	Sql         string  `json:"sql"`
-	SourceIp    string  `json:"sourceIp"`
-	TargetIp    string  `json:"targetIp"`
+	Type        string  `json:"Type"`
+	Operator    string  `json:"Operator"`
+	OperateTime int64   `json:"OperateTime"`
+	Duration    float64 `json:"Duration"`
+	State       string  `json:"State"`
+	Action      string  `json:"Action"`
+	Table       string  `json:"Table"`
+	Database    string  `json:"Database"`
+	Sql         string  `json:"Sql"`
+	SourceIp    string  `json:"SourceIp"`
+	TargetIp    string  `json:"TargetIp"`
 }
 
 func Logging(log Log) {
@@ -284,8 +284,7 @@ func Logging(log Log) {
 		panic("damn we cant marshal it! reasons -> " + err.Error())
 	}
 
-	trimed := strings.Replace(string(bytes), "\"", "", -1)
-	trimed = strings.Replace(trimed, "\\", "", -1)
+	trimed := strings.Replace(string(bytes), "\\", "", -1)
 	bytes = []byte(trimed)
 
 	l := GlobalSqlLogger
