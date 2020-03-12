@@ -16,11 +16,12 @@ package kingshard
 
 import (
 	"fmt"
-	"github.com/XiaohanLiang/kingshard/lib/golog"
-	"github.com/XiaohanLiang/kingshard/server"
 	"path"
 	"runtime"
 	"strings"
+
+	"github.com/XiaohanLiang/kingshard/lib/golog"
+	"github.com/XiaohanLiang/kingshard/server"
 )
 
 const (

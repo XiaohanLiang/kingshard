@@ -222,10 +222,9 @@ func (c *ClientConn) readHandshakeResponse() error {
 	//auth length and auth
 	authLen := int(data[pos])
 	pos++
-	auth := data[pos : pos+authLen]
+	_ = data[pos : pos+authLen]
 
 	//check user
-	fmt.Printf(" %s \n", string(auth))
 	//if _, ok := c.proxy.users[c.user]; !ok {
 	//	golog.Error("ClientConn", "readHandshakeResponse", "error", 0,
 	//		"auth", auth,
@@ -281,6 +280,7 @@ func (c *ClientConn) Run() {
 	}()
 
 	for {
+		// select @@version xxx stuff already
 		data, err := c.readPacket()
 
 		if err != nil {
